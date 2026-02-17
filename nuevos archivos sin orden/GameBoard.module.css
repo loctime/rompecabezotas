@@ -1,0 +1,18 @@
+.board {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 1;
+  background: var(--color-white-10);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-board);
+  /* Subtle inner border */
+  outline: 1px solid var(--color-white-10);
+}
+
+@media (max-width: 520px) {
+  .board {
+    max-width: min(92vw, 420px);
+  }
+}

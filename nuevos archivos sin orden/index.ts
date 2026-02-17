@@ -1,0 +1,67 @@
+// ─── DOMAIN TYPES ─────────────────────────────────────────────────────────────
+
+export interface PuzzlePiece {
+  id: number;
+  correctPosition: number;
+  currentPosition: number;
+  groupId: number;
+  row: number;
+  col: number;
+}
+
+export interface PieceGroup {
+  id: number;
+  pieceIds: number[];
+  positions: number[];
+}
+
+export interface Level {
+  id: number;
+  title: string;
+  imageUrl: string;
+  gridSize: number;
+  unlocked: boolean;
+  completed: boolean;
+  bestMoves?: number;
+  bestTime?: number;
+}
+
+// ─── GAME STATE ────────────────────────────────────────────────────────────────
+
+export interface GameState {
+  pieces: PuzzlePiece[];
+  groups: PieceGroup[];
+  selectedPieceId: number | null;
+  isComplete: boolean;
+  moves: number;
+  startTime: number | null;
+  elapsedTime: number;
+}
+
+export type GameAction =
+  | { type: 'INIT'; level: Level }
+  | { type: 'SELECT_PIECE'; pieceId: number }
+  | { type: 'DESELECT' }
+  | { type: 'SWAP_AND_MERGE'; pieceId1: number; pieceId2: number }
+  | { type: 'COMPLETE' }
+  | { type: 'RESET'; level: Level }
+  | { type: 'TICK'; elapsed: number };
+
+// ─── PROGRESS ─────────────────────────────────────────────────────────────────
+
+export interface LevelStats {
+  completed: boolean;
+  bestMoves: number;
+  bestTime: number;
+}
+
+export type ProgressMap = Record<number, LevelStats>;
+
+// ─── UI ───────────────────────────────────────────────────────────────────────
+
+export type Screen = 'selector' | 'game';
+
+export interface AppState {
+  screen: Screen;
+  currentLevel: Level | null;
+}

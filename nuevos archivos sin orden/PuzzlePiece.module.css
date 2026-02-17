@@ -1,0 +1,58 @@
+.wrapper {
+  position: absolute;
+  padding: 2px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 1;
+}
+
+.inner {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  background-repeat: no-repeat;
+  border: 2px solid rgba(74, 155, 142, 0.5);
+  box-shadow: var(--shadow-piece);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-base) var(--ease-smooth),
+    box-shadow var(--duration-base) var(--ease-smooth),
+    transform var(--duration-fast) var(--ease-smooth);
+  outline: none;
+}
+
+/* Selected state */
+.inner.selected {
+  border-color: var(--color-gold);
+  box-shadow: var(--gradient-piece-selected);
+  transform: scale(1.06);
+  z-index: 10;
+}
+
+/* Correct position (not merged yet) */
+.inner.correct {
+  border-color: rgba(110, 196, 184, 0.6);
+  box-shadow: 0 0 0 2px rgba(110, 196, 184, 0.3), var(--shadow-piece);
+}
+
+/* Part of a merged group */
+.inner.inGroup {
+  border-color: rgba(74, 155, 142, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Merge flash animation */
+.inner.merging {
+  animation: mergeFlash 500ms var(--ease-smooth) forwards;
+}
+
+/* Hover state (non-touch) */
+@media (hover: hover) {
+  .inner:not(.selected):hover {
+    border-color: var(--color-teal-400);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    transform: scale(1.03);
+  }
+}
