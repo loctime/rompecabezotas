@@ -244,8 +244,3 @@ export function useDrag(
 
   return { dragState, boardRef, ghostRef, dropTargetRef, onPiecePointerDown, isDraggingPiece };
 }
-
-</think>
-Corrigiendo la lógica: el montaje del ghost debe ocurrir con un único setState cuando se supera el umbral.
-<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
-StrReplace

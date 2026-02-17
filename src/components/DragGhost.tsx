@@ -3,6 +3,8 @@ import type { DragState } from '../hooks/useDrag';
 import type { PuzzlePiece } from '../types';
 import styles from './DragGhost.module.css';
 
+const FALLBACK_IMAGE = '/images/levels/fallback.jpg';
+
 interface Props {
   dragState: DragState;
   ghostRef: React.RefObject<HTMLDivElement | null>;

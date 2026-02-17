@@ -1,7 +1,9 @@
-import { memo, type CSSProperties } from 'react';
+import { memo, useState, useEffect, type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import type { PuzzlePiece as PuzzlePieceType } from '../types';
 import styles from './PuzzlePiece.module.css';
+
+const FALLBACK_IMAGE = '/images/levels/fallback.png';
 
 interface Props {
   piece: PuzzlePieceType;
@@ -28,6 +30,24 @@ export const PuzzlePiece = memo(function PuzzlePiece({
   onPointerDown,
   onClick,
 }: Props) {
+  const [currentImageUrl, setCurrentImageUrl] = useState(imageUrl);
+
+  // Update image URL when prop changes and preload to detect errors
+  useEffect(() => {
+    setCurrentImageUrl(imageUrl);
+    
+    // Preload image to detect errors
+    const img = new Image();
+    img.onload = () => {
+      // Image loaded successfully
+    };
+    img.onerror = () => {
+      // Image failed to load, use fallback
+      setCurrentImageUrl(FALLBACK_IMAGE);
+    };
+    img.src = imageUrl;
+  }, [imageUrl]);
+
   const pieceSize = 100 / gridSize;
   const currentRow = Math.floor(piece.currentPosition / gridSize);
   const currentCol = piece.currentPosition % gridSize;
@@ -73,7 +93,7 @@ export const PuzzlePiece = memo(function PuzzlePiece({
         aria-pressed={isSelected}
         aria-grabbed={isDragging}
         style={{
-          backgroundImage: `url(${imageUrl})`,
+          backgroundImage: `url("${currentImageUrl}")`,
           backgroundSize: `${gridSize * 100}% ${gridSize * 100}%`,
           backgroundPosition: `${bgPosX}% ${bgPosY}%`,
           cursor: isDragging ? 'grabbing' : 'grab',
