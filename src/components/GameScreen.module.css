@@ -5,7 +5,6 @@
   flex-direction: column;
 }
 
-/* ── Header ── */
 .header {
   display: flex;
   align-items: center;
@@ -19,7 +18,7 @@
   height: 44px;
   border-radius: var(--radius-md);
   background: var(--color-white-20);
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -63,37 +62,41 @@
   max-width: 180px;
 }
 
-.timer {
-  font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--color-white);
-  min-width: 44px;
-  text-align: right;
+.timerBar {
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--space-5) var(--space-2);
 }
 
-/* ── Main ── */
+.timerValue {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-white-80);
+  letter-spacing: 0.04em;
+}
+
 .main {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-3) var(--space-5);
 }
 
-/* ── Footer ── */
 .footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-4) var(--space-6);
-  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5) var(--space-6);
+  gap: var(--space-3);
 }
 
 .moveCounter {
   display: flex;
   flex-direction: column;
   align-items: center;
+  min-width: 56px;
 }
 
 .moveCount {
@@ -105,15 +108,35 @@
 }
 
 .moveLabel {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--color-white-80);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
+.hintBtn {
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-white);
+  background: var(--color-white-10);
+  border: 1.5px solid var(--color-white-20);
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast), opacity var(--duration-fast);
+}
+
+.hintBtn:hover:not(:disabled) {
+  background: var(--color-white-20);
+}
+
+.hintBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .resetBtn {
-  padding: var(--space-3) var(--space-6);
-  font-size: 0.9rem;
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-white-80);
   border: 1.5px solid var(--color-white-40);

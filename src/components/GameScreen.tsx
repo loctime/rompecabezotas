@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { Level } from '../types';
 import { useGameState } from '../hooks/useGameState';
+import { useSound } from '../hooks/useSound';
+import { useHint } from '../hooks/useHint';
 import { GameBoard } from './GameBoard';
 import { VictoryModal } from './VictoryModal';
 import styles from './GameScreen.module.css';
@@ -31,35 +33,57 @@ export function GameScreen({ level, onBack, onNextLevel, onLevelComplete }: Prop
     resetLevel,
   } = useGameState(level);
 
-  // Report completion once
-  const handleVictoryOpen = useCallback(() => {
-    onLevelComplete(level.id, moves, elapsedTime);
-  }, [level.id, moves, elapsedTime, onLevelComplete]);
+  const { play, enabled: soundEnabled, toggle: toggleSound } = useSound();
+  const { hintPieceId, triggerHint, isOnCooldown } = useHint(pieces);
 
-  // Trigger once when isComplete flips to true
-  const prevCompleteRef = useRef(false);
-
+  const prevGroupCountRef = useRef(groups.length);
   useEffect(() => {
-    if (isComplete && !prevCompleteRef.current) {
-      prevCompleteRef.current = true;
-      handleVictoryOpen();
+    if (groups.length < prevGroupCountRef.current) {
+      play('merge');
+    }
+    prevGroupCountRef.current = groups.length;
+  }, [groups.length, play]);
+
+  const prevSelectedRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (selectedPieceId !== null && prevSelectedRef.current === null) {
+      play('select');
+    }
+    prevSelectedRef.current = selectedPieceId;
+  }, [selectedPieceId, play]);
+
+  const handlePieceClickWithSound = useCallback(
+    (pieceId: number) => {
+      if (selectedPieceId !== null && selectedPieceId !== pieceId) {
+        play('swap');
+      }
+      handlePieceClick(pieceId);
+    },
+    [selectedPieceId, handlePieceClick, play]
+  );
+
+  const completionReportedRef = useRef(false);
+  useEffect(() => {
+    if (isComplete && !completionReportedRef.current) {
+      completionReportedRef.current = true;
+      play('victory');
+      onLevelComplete(level.id, moves, elapsedTime);
     }
 
     if (!isComplete) {
-      prevCompleteRef.current = false;
+      completionReportedRef.current = false;
     }
-  }, [isComplete, handleVictoryOpen]);
+  }, [isComplete, play, onLevelComplete, level.id, moves, elapsedTime]);
 
   return (
     <div className={styles.screen}>
-      {/* Header */}
       <motion.header
         className={styles.header}
         initial={{ y: -60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.4 }}
       >
-        <button className={styles.iconBtn} onClick={onBack} aria-label="Volver al menú">
+        <button className={styles.iconBtn} onClick={onBack} aria-label="Volver al menu">
           ←
         </button>
 
@@ -68,29 +92,42 @@ export function GameScreen({ level, onBack, onNextLevel, onLevelComplete }: Prop
           <span className={styles.levelTitle}>{level.title}</span>
         </div>
 
-        <div className={styles.timer} aria-live="polite" aria-label={`Tiempo: ${formatTime(elapsedTime)}`}>
-          {formatTime(elapsedTime)}
-        </div>
+        <button
+          className={styles.iconBtn}
+          onClick={toggleSound}
+          aria-label={soundEnabled ? 'Silenciar sonido' : 'Activar sonido'}
+        >
+          {soundEnabled ? '🔊' : '🔇'}
+        </button>
       </motion.header>
 
-      {/* Board area */}
+      <div className={styles.timerBar}>
+        <span className={styles.timerValue} aria-live="polite" aria-label={`Tiempo: ${formatTime(elapsedTime)}`}>
+          ⏱ {formatTime(elapsedTime)}
+        </span>
+      </div>
+
       <main className={styles.main}>
         <GameBoard
           pieces={pieces}
           groups={groups}
           selectedPieceId={selectedPieceId}
+          hintPieceId={hintPieceId}
           imageUrl={level.imageUrl}
           gridSize={level.gridSize}
-          onPieceClick={handlePieceClick}
+          onPieceClick={handlePieceClickWithSound}
         />
       </main>
 
-      {/* Footer */}
       <footer className={styles.footer}>
         <div className={styles.moveCounter}>
           <span className={styles.moveCount}>{moves}</span>
           <span className={styles.moveLabel}>movimientos</span>
         </div>
+
+        <button className={styles.hintBtn} onClick={triggerHint} disabled={isOnCooldown || isComplete} aria-label="Mostrar pista">
+          💡 Pista
+        </button>
 
         <button className={styles.resetBtn} onClick={resetLevel}>
           Reiniciar
