@@ -7,8 +7,23 @@
   border-radius: var(--radius-xl);
   overflow: hidden;
   box-shadow: var(--shadow-board);
-  /* Subtle inner border */
   outline: 1px solid var(--color-white-10);
+}
+
+.groupBorderSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+  overflow: visible;
+}
+
+.groupBorderSvg line {
+  stroke: var(--color-gold);
+  opacity: 0.85;
+  filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.6));
 }
 
 @media (max-width: 520px) {
