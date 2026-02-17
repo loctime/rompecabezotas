@@ -1,0 +1,10 @@
+Este archivo debe ser un PNG de 192x192px con el logo del juego.
+Para generarlo, puedes:
+1. Usar el archivo puzzle-icon.svg y convertirlo a PNG
+2. O usar un generador online como https://realfavicongenerator.net/
+3. O crear un diseño personalizado en Figma/Canva
+
+Sugerencia de contenido:
+- Fondo: #4A9B8E (verde turquesa)
+- Ícono: Piezas de puzzle blancas y doradas
+- Bordes redondeados
