@@ -62,8 +62,14 @@
   }
 }
 
+
+.inner.dragging {
+  cursor: grabbing;
+  border-color: var(--color-gold);
+}
+
 @media (hover: hover) {
-  .inner:not(.selected):hover {
+  .inner:not(.selected):not(.dragging):hover {
     border-color: var(--color-teal-400);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
     transform: scale(1.03);

@@ -2,6 +2,8 @@ import { memo, useMemo, useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { PuzzlePiece as PuzzlePieceType, PieceGroup } from '../types';
 import { PuzzlePiece } from './PuzzlePiece';
+import { DragGhost } from './DragGhost';
+import { useDrag } from '../hooks/useDrag';
 import styles from './GameBoard.module.css';
 
 interface Props {
@@ -12,6 +14,8 @@ interface Props {
   imageUrl: string;
   gridSize: number;
   onPieceClick: (id: number) => void;
+  onSwap: (pieceId1: number, pieceId2: number) => void;
+  onDragStart: () => void;
 }
 
 interface GroupBorderProps {
@@ -71,6 +75,30 @@ const GroupBorder = memo(function GroupBorder({ group, pieceById, gridSize }: Gr
   );
 });
 
+interface DropTargetProps {
+  position: number;
+  gridSize: number;
+}
+
+const DropTarget = memo(function DropTarget({ position, gridSize }: DropTargetProps) {
+  const pieceSize = 100 / gridSize;
+  const row = Math.floor(position / gridSize);
+  const col = position % gridSize;
+
+  return (
+    <div
+      className={styles.dropTarget}
+      aria-hidden
+      style={{
+        width: `${pieceSize}%`,
+        height: `${pieceSize}%`,
+        left: `${col * pieceSize}%`,
+        top: `${row * pieceSize}%`,
+      }}
+    />
+  );
+});
+
 export function GameBoard({
   pieces,
   groups,
@@ -79,6 +107,8 @@ export function GameBoard({
   imageUrl,
   gridSize,
   onPieceClick,
+  onSwap,
+  onDragStart,
 }: Props) {
   const [mergingPieceIds, setMergingPieceIds] = useState<Set<number>>(new Set());
   const prevGroupCountRef = useRef(groups.length);
@@ -108,32 +138,56 @@ export function GameBoard({
   const pieceById = useMemo(() => new Map(pieces.map((piece) => [piece.id, piece])), [pieces]);
   const mergedGroups = useMemo(() => groups.filter((g) => g.pieceIds.length > 1), [groups]);
 
-  return (
-    <motion.div
-      className={styles.board}
-      initial={{ scale: 0.85, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.45, ease: [0.34, 1.56, 0.64, 1] }}
-      role="grid"
-      aria-label={`Tablero de puzzle ${gridSize}x${gridSize}`}
-    >
-      {pieces.map((piece) => (
-        <PuzzlePiece
-          key={piece.id}
-          piece={piece}
-          imageUrl={imageUrl}
-          gridSize={gridSize}
-          isSelected={selectedPieceId === piece.id}
-          isInGroup={(groupSizeMap.get(piece.id) ?? 1) > 1}
-          isMerging={mergingPieceIds.has(piece.id)}
-          isHint={hintPieceId === piece.id}
-          onClick={() => onPieceClick(piece.id)}
-        />
-      ))}
+  const { dragState, boardRef, onPiecePointerDown, isDraggingPiece } = useDrag(
+    pieces,
+    gridSize,
+    onPieceClick,
+    onSwap,
+    onDragStart
+  );
 
-      {mergedGroups.map((group) => (
-        <GroupBorder key={group.id} group={group} pieceById={pieceById} gridSize={gridSize} />
-      ))}
-    </motion.div>
+  const isValidDropTarget =
+    dragState.hoverPosition !== null &&
+    dragState.draggingPieceId !== null &&
+    pieces.find((p) => p.currentPosition === dragState.hoverPosition)?.id !== dragState.draggingPieceId;
+
+  return (
+    <>
+      <motion.div
+        ref={boardRef}
+        className={styles.board}
+        initial={{ scale: 0.85, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.45, ease: [0.34, 1.56, 0.64, 1] }}
+        role="grid"
+        aria-label={`Tablero de puzzle ${gridSize}x${gridSize}`}
+      >
+        {dragState.hoverPosition !== null && isValidDropTarget && (
+          <DropTarget position={dragState.hoverPosition} gridSize={gridSize} />
+        )}
+
+        {pieces.map((piece) => (
+          <PuzzlePiece
+            key={piece.id}
+            piece={piece}
+            imageUrl={imageUrl}
+            gridSize={gridSize}
+            isSelected={selectedPieceId === piece.id}
+            isInGroup={(groupSizeMap.get(piece.id) ?? 1) > 1}
+            isMerging={mergingPieceIds.has(piece.id)}
+            isHint={hintPieceId === piece.id}
+            isDragging={isDraggingPiece(piece.id)}
+            onPointerDown={(e) => onPiecePointerDown(piece.id, e)}
+            onClick={() => {}}
+          />
+        ))}
+
+        {mergedGroups.map((group) => (
+          <GroupBorder key={group.id} group={group} pieceById={pieceById} gridSize={gridSize} />
+        ))}
+      </motion.div>
+
+      <DragGhost dragState={dragState} pieces={pieces} imageUrl={imageUrl} gridSize={gridSize} />
+    </>
   );
 }

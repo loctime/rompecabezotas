@@ -11,6 +11,8 @@ interface Props {
   isInGroup: boolean;
   isMerging: boolean;
   isHint: boolean;
+  isDragging: boolean;
+  onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => void;
   onClick: () => void;
 }
 
@@ -22,6 +24,8 @@ export const PuzzlePiece = memo(function PuzzlePiece({
   isInGroup,
   isMerging,
   isHint,
+  isDragging,
+  onPointerDown,
   onClick,
 }: Props) {
   const pieceSize = 100 / gridSize;
@@ -36,6 +40,7 @@ export const PuzzlePiece = memo(function PuzzlePiece({
     isInGroup && styles.inGroup,
     isMerging && styles.merging,
     isHint && styles.hint,
+    isDragging && styles.dragging,
   ]
     .filter(Boolean)
     .join(' ');
@@ -55,20 +60,23 @@ export const PuzzlePiece = memo(function PuzzlePiece({
       className={styles.wrapper}
       style={pieceStyle}
       initial={{ opacity: 0, scale: 0.92 }}
-      animate={{ opacity: 1, scale: 1 }}
+      animate={{ opacity: isDragging ? 0.28 : 1, scale: isDragging ? 0.95 : 1 }}
       transition={{ duration: 0.22 }}
       layout
       layoutId={`piece-${piece.id}`}
     >
       <button
         className={innerClass}
+        onPointerDown={onPointerDown}
         onClick={onClick}
         aria-label={`Pieza ${piece.id + 1}${isCorrect ? ' (en posicion correcta)' : ''}${isHint ? ' (pista)' : ''}`}
         aria-pressed={isSelected}
+        aria-grabbed={isDragging}
         style={{
           backgroundImage: `url(${imageUrl})`,
           backgroundSize: `${gridSize * 100}% ${gridSize * 100}%`,
           backgroundPosition: `${bgPosX}% ${bgPosY}%`,
+          cursor: isDragging ? 'grabbing' : 'grab',
         }}
       />
     </motion.div>

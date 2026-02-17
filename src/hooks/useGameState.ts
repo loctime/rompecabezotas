@@ -8,8 +8,6 @@ import {
   isPuzzleComplete,
 } from '../utils/puzzleLogic';
 
-// ─── REDUCER ──────────────────────────────────────────────────────────────────
-
 function buildInitialState(level: Level): GameState {
   const pieces = generatePuzzlePieces(level.gridSize);
   const groups = generateInitialGroups(pieces);
@@ -39,7 +37,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'SWAP_AND_MERGE': {
       const { pieceId1, pieceId2, gridSize } = action;
 
-      // 1. Swap
       const { pieces: swapped, groups: swappedGroups } = swapPiecesOrGroups(
         state.pieces,
         state.groups,
@@ -47,7 +44,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         pieceId2
       );
 
-      // 2. Merge correct neighbors
       const { pieces: final, groups: finalGroups } = checkAndMergeAdjacentGroups(
         swapped,
         swappedGroups,
@@ -76,8 +72,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
   }
 }
 
-// ─── HOOK ─────────────────────────────────────────────────────────────────────
-
 export interface UseGameStateReturn {
   pieces: GameState['pieces'];
   groups: GameState['groups'];
@@ -86,6 +80,7 @@ export interface UseGameStateReturn {
   moves: GameState['moves'];
   elapsedTime: GameState['elapsedTime'];
   handlePieceClick: (pieceId: number) => void;
+  handleSwap: (pieceId1: number, pieceId2: number) => void;
   resetLevel: () => void;
 }
 
@@ -93,12 +88,10 @@ export function useGameState(level: Level): UseGameStateReturn {
   const [state, dispatch] = useReducer(gameReducer, level, buildInitialState);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Re-init when level changes
   useEffect(() => {
     dispatch({ type: 'INIT', level });
   }, [level.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Timer tick every second while playing
   useEffect(() => {
     if (state.isComplete) {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -112,6 +105,14 @@ export function useGameState(level: Level): UseGameStateReturn {
     };
   }, [state.isComplete, state.startTime]);
 
+  const handleSwap = useCallback(
+    (pieceId1: number, pieceId2: number) => {
+      if (state.isComplete || pieceId1 === pieceId2) return;
+      dispatch({ type: 'SWAP_AND_MERGE', pieceId1, pieceId2, gridSize: level.gridSize });
+    },
+    [state.isComplete, level.gridSize]
+  );
+
   const handlePieceClick = useCallback(
     (pieceId: number) => {
       if (state.isComplete) return;
@@ -121,10 +122,10 @@ export function useGameState(level: Level): UseGameStateReturn {
       } else if (state.selectedPieceId === pieceId) {
         dispatch({ type: 'DESELECT' });
       } else {
-        dispatch({ type: 'SWAP_AND_MERGE', pieceId1: state.selectedPieceId, pieceId2: pieceId, gridSize: level.gridSize });
+        handleSwap(state.selectedPieceId, pieceId);
       }
     },
-    [state.isComplete, state.selectedPieceId, level.gridSize]
+    [state.isComplete, state.selectedPieceId, handleSwap]
   );
 
   const resetLevel = useCallback(() => {
@@ -139,6 +140,7 @@ export function useGameState(level: Level): UseGameStateReturn {
     moves: state.moves,
     elapsedTime: state.elapsedTime,
     handlePieceClick,
+    handleSwap,
     resetLevel,
   };
 }
