@@ -30,11 +30,12 @@ export function GameScreen({ level, onBack, onNextLevel, onLevelComplete }: Prop
     moves,
     elapsedTime,
     handlePieceClick,
+    handleSwap,
     resetLevel,
   } = useGameState(level);
 
   const { play, enabled: soundEnabled, toggle: toggleSound } = useSound();
-  const { hintPieceId, triggerHint, isOnCooldown } = useHint(pieces);
+  const { hintPieceId, triggerHint, dismissHint, isOnCooldown } = useHint(pieces);
 
   const prevGroupCountRef = useRef(groups.length);
   useEffect(() => {
@@ -62,6 +63,14 @@ export function GameScreen({ level, onBack, onNextLevel, onLevelComplete }: Prop
     [selectedPieceId, handlePieceClick, play]
   );
 
+  const handleSwapWithSound = useCallback(
+    (pieceId1: number, pieceId2: number) => {
+      play('swap');
+      handleSwap(pieceId1, pieceId2);
+    },
+    [handleSwap, play]
+  );
+
   const completionReportedRef = useRef(false);
   useEffect(() => {
     if (isComplete && !completionReportedRef.current) {
@@ -74,6 +83,10 @@ export function GameScreen({ level, onBack, onNextLevel, onLevelComplete }: Prop
       completionReportedRef.current = false;
     }
   }, [isComplete, play, onLevelComplete, level.id, moves, elapsedTime]);
+
+  const handleDragStart = useCallback(() => {
+    dismissHint();
+  }, [dismissHint]);
 
   return (
     <div className={styles.screen}>
@@ -116,6 +129,8 @@ export function GameScreen({ level, onBack, onNextLevel, onLevelComplete }: Prop
           imageUrl={level.imageUrl}
           gridSize={level.gridSize}
           onPieceClick={handlePieceClickWithSound}
+          onSwap={handleSwapWithSound}
+          onDragStart={handleDragStart}
         />
       </main>
 

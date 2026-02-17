@@ -7,6 +7,7 @@ const HINT_COOLDOWN_MS = 3000;
 export interface UseHintReturn {
   hintPieceId: number | null;
   triggerHint: () => void;
+  dismissHint: () => void;
   isOnCooldown: boolean;
 }
 
@@ -25,6 +26,10 @@ export function useHint(pieces: PuzzlePiece[]): UseHintReturn {
       clearTimeout(cooldownTimerRef.current);
       cooldownTimerRef.current = null;
     }
+  }, []);
+
+  const dismissHint = useCallback(() => {
+    setHintPieceId(null);
   }, []);
 
   const triggerHint = useCallback(() => {
@@ -58,5 +63,5 @@ export function useHint(pieces: PuzzlePiece[]): UseHintReturn {
 
   useEffect(() => clearTimers, [clearTimers]);
 
-  return { hintPieceId, triggerHint, isOnCooldown };
+  return { hintPieceId, triggerHint, dismissHint, isOnCooldown };
 }
