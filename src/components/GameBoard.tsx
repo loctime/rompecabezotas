@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { PuzzlePiece as PuzzlePieceType, PieceGroup } from '../types';
 import { PuzzlePiece } from './PuzzlePiece';
@@ -22,7 +22,7 @@ export function GameBoard({
   onPieceClick,
 }: Props) {
   const [mergingPieceIds, setMergingPieceIds] = useState<Set<number>>(new Set());
-  const prevGroupCountRef = { current: groups.length };
+  const prevGroupCountRef = useRef(groups.length);
 
   // Track merge events to trigger flash animation
   useEffect(() => {
@@ -33,6 +33,7 @@ export function GameBoard({
         pieces.filter((p) => p.currentPosition === p.correctPosition).map((p) => p.id)
       );
       setMergingPieceIds(correctPieceIds);
+      prevGroupCountRef.current = groups.length;
       const timer = setTimeout(() => setMergingPieceIds(new Set()), 500);
       return () => clearTimeout(timer);
     }

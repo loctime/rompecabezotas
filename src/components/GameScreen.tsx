@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import type { Level } from '../types';
 import { useGameState } from '../hooks/useGameState';
@@ -37,11 +37,18 @@ export function GameScreen({ level, onBack, onNextLevel, onLevelComplete }: Prop
   }, [level.id, moves, elapsedTime, onLevelComplete]);
 
   // Trigger once when isComplete flips to true
-  const prevComplete = { current: false };
-  if (isComplete && !prevComplete.current) {
-    prevComplete.current = true;
-    handleVictoryOpen();
-  }
+  const prevCompleteRef = useRef(false);
+
+  useEffect(() => {
+    if (isComplete && !prevCompleteRef.current) {
+      prevCompleteRef.current = true;
+      handleVictoryOpen();
+    }
+
+    if (!isComplete) {
+      prevCompleteRef.current = false;
+    }
+  }, [isComplete, handleVictoryOpen]);
 
   return (
     <div className={styles.screen}>
