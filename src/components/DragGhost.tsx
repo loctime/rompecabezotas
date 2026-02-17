@@ -5,12 +5,13 @@ import styles from './DragGhost.module.css';
 
 interface Props {
   dragState: DragState;
+  ghostRef: React.RefObject<HTMLDivElement | null>;
   pieces: PuzzlePiece[];
   imageUrl: string;
   gridSize: number;
 }
 
-export const DragGhost = memo(function DragGhost({ dragState, pieces, imageUrl, gridSize }: Props) {
+export const DragGhost = memo(function DragGhost({ dragState, ghostRef, pieces, imageUrl, gridSize }: Props) {
   if (!dragState.isDragging || dragState.draggingPieceId === null) return null;
 
   const piece = pieces.find((p) => p.id === dragState.draggingPieceId);
@@ -21,13 +22,15 @@ export const DragGhost = memo(function DragGhost({ dragState, pieces, imageUrl, 
 
   return (
     <div
+      ref={ghostRef}
       className={styles.ghost}
       aria-hidden
       style={{
-        left: dragState.ghostX,
-        top: dragState.ghostY,
+        left: dragState.ghostStartX,
+        top: dragState.ghostStartY,
         width: dragState.ghostSize,
         height: dragState.ghostSize,
+        transform: 'translate3d(0, 0, 0)',
         backgroundImage: `url(${imageUrl})`,
         backgroundSize: `${gridSize * 100}% ${gridSize * 100}%`,
         backgroundPosition: `${bgPosX}% ${bgPosY}%`,

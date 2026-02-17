@@ -10,5 +10,5 @@
     0 16px 40px rgba(0, 0, 0, 0.5);
   opacity: 0.92;
   transform: scale(1.08) rotate(2deg);
-  will-change: left, top;
+  will-change: transform;
 }

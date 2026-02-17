@@ -75,28 +75,16 @@ const GroupBorder = memo(function GroupBorder({ group, pieceById, gridSize }: Gr
   );
 });
 
-interface DropTargetProps {
-  position: number;
-  gridSize: number;
-}
-
-const DropTarget = memo(function DropTarget({ position, gridSize }: DropTargetProps) {
-  const pieceSize = 100 / gridSize;
-  const row = Math.floor(position / gridSize);
-  const col = position % gridSize;
-
-  return (
-    <div
-      className={styles.dropTarget}
-      aria-hidden
-      style={{
-        width: `${pieceSize}%`,
-        height: `${pieceSize}%`,
-        left: `${col * pieceSize}%`,
-        top: `${row * pieceSize}%`,
-      }}
-    />
-  );
+/** Overlay de drop target actualizado imperativamente por useDrag (evita rerenders) */
+const DropTargetOverlay = memo(function DropTargetOverlay({
+  dropTargetRef,
+  isDragging,
+}: {
+  dropTargetRef: React.RefObject<HTMLDivElement | null>;
+  isDragging: boolean;
+}) {
+  if (!isDragging) return null;
+  return <div ref={dropTargetRef} className={styles.dropTargetOverlay} aria-hidden style={{ display: 'none' }} />;
 });
 
 export function GameBoard({
@@ -138,18 +126,13 @@ export function GameBoard({
   const pieceById = useMemo(() => new Map(pieces.map((piece) => [piece.id, piece])), [pieces]);
   const mergedGroups = useMemo(() => groups.filter((g) => g.pieceIds.length > 1), [groups]);
 
-  const { dragState, boardRef, onPiecePointerDown, isDraggingPiece } = useDrag(
+  const { dragState, boardRef, ghostRef, dropTargetRef, onPiecePointerDown, isDraggingPiece } = useDrag(
     pieces,
     gridSize,
     onPieceClick,
     onSwap,
     onDragStart
   );
-
-  const isValidDropTarget =
-    dragState.hoverPosition !== null &&
-    dragState.draggingPieceId !== null &&
-    pieces.find((p) => p.currentPosition === dragState.hoverPosition)?.id !== dragState.draggingPieceId;
 
   return (
     <>
@@ -162,10 +145,6 @@ export function GameBoard({
         role="grid"
         aria-label={`Tablero de puzzle ${gridSize}x${gridSize}`}
       >
-        {dragState.hoverPosition !== null && isValidDropTarget && (
-          <DropTarget position={dragState.hoverPosition} gridSize={gridSize} />
-        )}
-
         {pieces.map((piece) => (
           <PuzzlePiece
             key={piece.id}
@@ -187,7 +166,8 @@ export function GameBoard({
         ))}
       </motion.div>
 
-      <DragGhost dragState={dragState} pieces={pieces} imageUrl={imageUrl} gridSize={gridSize} />
+      <DropTargetOverlay dropTargetRef={dropTargetRef} isDragging={dragState.isDragging} />
+      <DragGhost dragState={dragState} ghostRef={ghostRef} pieces={pieces} imageUrl={imageUrl} gridSize={gridSize} />
     </>
   );
 }

@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+/** Estado mínimo para montar/desmontar el overlay. NO incluye ghostX/Y ni hoverPosition. */
 export interface DragState {
   isDragging: boolean;
   draggingPieceId: number | null;
-  ghostX: number;
-  ghostY: number;
   ghostSize: number;
-  hoverPosition: number | null;
+  ghostStartX: number;
+  ghostStartY: number;
 }
 
 export interface UseDragReturn {
   dragState: DragState;
   boardRef: React.RefObject<HTMLDivElement>;
+  ghostRef: React.RefObject<HTMLDivElement | null>;
+  dropTargetRef: React.RefObject<HTMLDivElement | null>;
   onPiecePointerDown: (pieceId: number, e: React.PointerEvent<HTMLButtonElement>) => void;
   isDraggingPiece: (pieceId: number) => boolean;
 }
@@ -31,13 +33,15 @@ export function useDrag(
   onDragStart?: () => void
 ): UseDragReturn {
   const boardRef = useRef<HTMLDivElement>(null);
+  const ghostRef = useRef<HTMLDivElement | null>(null);
+  const dropTargetRef = useRef<HTMLDivElement | null>(null);
+
   const [dragState, setDragState] = useState<DragState>({
     isDragging: false,
     draggingPieceId: null,
-    ghostX: 0,
-    ghostY: 0,
     ghostSize: 0,
-    hoverPosition: null,
+    ghostStartX: 0,
+    ghostStartY: 0,
   });
 
   const internal = useRef({
@@ -48,6 +52,7 @@ export function useDrag(
     movedEnough: false,
     pointerId: -1,
     dragStartNotified: false,
+    boardRect: null as DOMRect | null,
   });
 
   const getPieceSizePx = useCallback((): number => {
@@ -78,19 +83,53 @@ export function useDrag(
     [gridSize]
   );
 
+  const updateDropTarget = useCallback(
+    (position: number | null) => {
+      const el = dropTargetRef.current;
+      const rect = internal.current.boardRect;
+      if (!el || !rect) return;
+
+      if (position === null) {
+        el.style.display = 'none';
+        return;
+      }
+
+      const targetPiece = pieces.find((p) => p.currentPosition === position);
+      if (!targetPiece || targetPiece.id === internal.current.pieceId) {
+        el.style.display = 'none';
+        return;
+      }
+
+      const cellSize = rect.width / gridSize;
+      const row = Math.floor(position / gridSize);
+      const col = position % gridSize;
+      const left = rect.left + col * cellSize;
+      const top = rect.top + row * cellSize;
+
+      el.style.display = 'block';
+      el.style.left = `${left}px`;
+      el.style.top = `${top}px`;
+      el.style.width = `${cellSize}px`;
+      el.style.height = `${cellSize}px`;
+    },
+    [gridSize, pieces]
+  );
+
   const resetDragVisual = useCallback(() => {
     setDragState((prev) =>
-      prev.isDragging || prev.draggingPieceId !== null || prev.hoverPosition !== null
+      prev.isDragging || prev.draggingPieceId !== null
         ? {
             isDragging: false,
             draggingPieceId: null,
-            ghostX: 0,
-            ghostY: 0,
             ghostSize: 0,
-            hoverPosition: null,
+            ghostStartX: 0,
+            ghostStartY: 0,
           }
         : prev
     );
+    if (dropTargetRef.current) {
+      dropTargetRef.current.style.display = 'none';
+    }
   }, []);
 
   const onPiecePointerDown = useCallback((pieceId: number, e: React.PointerEvent<HTMLButtonElement>) => {
@@ -98,6 +137,7 @@ export function useDrag(
 
     e.currentTarget.setPointerCapture(e.pointerId);
 
+    const board = boardRef.current;
     internal.current = {
       active: true,
       pieceId,
@@ -106,8 +146,27 @@ export function useDrag(
       movedEnough: false,
       pointerId: e.pointerId,
       dragStartNotified: false,
+      boardRect: board ? board.getBoundingClientRect() : null,
     };
   }, []);
+
+  const startDragRef = useRef<() => void>(() => {});
+  startDragRef.current = () => {
+    const state = internal.current;
+    if (!state.active || state.pieceId < 0) return;
+
+    const size = getPieceSizePx();
+    const startX = state.startX - size / 2;
+    const startY = state.startY - size / 2;
+
+    setDragState({
+      isDragging: true,
+      draggingPieceId: state.pieceId,
+      ghostSize: size,
+      ghostStartX: startX,
+      ghostStartY: startY,
+    });
+  };
 
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
@@ -126,19 +185,18 @@ export function useDrag(
           onDragStart?.();
           state.dragStartNotified = true;
         }
+        startDragRef.current();
       }
 
-      const size = getPieceSizePx();
-      const hoverPosition = getPositionFromPoint(e.clientX, e.clientY);
+      // ─── MOVIMIENTO VISUAL: solo DOM imperativo, cero setState ───
+      const ghost = ghostRef.current;
+      if (ghost) {
+        ghost.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+      }
 
-      setDragState((prev) => ({
-        isDragging: true,
-        draggingPieceId: state.pieceId,
-        ghostX: e.clientX - size / 2,
-        ghostY: e.clientY - size / 2,
-        ghostSize: size,
-        hoverPosition: prev.hoverPosition === hoverPosition ? prev.hoverPosition : hoverPosition,
-      }));
+      // Hit-test para drop target (ref, no state)
+      const targetPos = getPositionFromPoint(e.clientX, e.clientY);
+      updateDropTarget(targetPos);
     };
 
     const handlePointerUp = (e: PointerEvent) => {
@@ -177,12 +235,17 @@ export function useDrag(
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerCancel);
     };
-  }, [pieces, getPieceSizePx, getPositionFromPoint, onTap, onSwap, onDragStart, resetDragVisual]);
+  }, [pieces, getPositionFromPoint, getPieceSizePx, onTap, onSwap, onDragStart, resetDragVisual, updateDropTarget]);
 
   const isDraggingPiece = useCallback(
     (pieceId: number) => dragState.isDragging && dragState.draggingPieceId === pieceId,
     [dragState.isDragging, dragState.draggingPieceId]
   );
 
-  return { dragState, boardRef, onPiecePointerDown, isDraggingPiece };
+  return { dragState, boardRef, ghostRef, dropTargetRef, onPiecePointerDown, isDraggingPiece };
 }
+
+</think>
+Corrigiendo la lógica: el montaje del ghost debe ocurrir con un único setState cuando se supera el umbral.
+<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
+StrReplace
