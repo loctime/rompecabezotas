@@ -14,6 +14,10 @@ interface Props {
   isMerging: boolean;
   isHint: boolean;
   isDragging: boolean;
+  hideTopBorder?: boolean;
+  hideRightBorder?: boolean;
+  hideBottomBorder?: boolean;
+  hideLeftBorder?: boolean;
   onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => void;
   onClick: () => void;
 }
@@ -27,6 +31,10 @@ export const PuzzlePiece = memo(function PuzzlePiece({
   isMerging,
   isHint,
   isDragging,
+  hideTopBorder = false,
+  hideRightBorder = false,
+  hideBottomBorder = false,
+  hideLeftBorder = false,
   onPointerDown,
   onClick,
 }: Props) {
@@ -61,6 +69,10 @@ export const PuzzlePiece = memo(function PuzzlePiece({
     isMerging && styles.merging,
     isHint && styles.hint,
     isDragging && styles.dragging,
+    hideTopBorder && styles.hideTopBorder,
+    hideRightBorder && styles.hideRightBorder,
+    hideBottomBorder && styles.hideBottomBorder,
+    hideLeftBorder && styles.hideLeftBorder,
   ]
     .filter(Boolean)
     .join(' ');

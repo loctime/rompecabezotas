@@ -23,6 +23,23 @@
   outline: none;
 }
 
+/* Hide borders when pieces are merged */
+.inner.hideTopBorder {
+  border-top-color: transparent;
+}
+
+.inner.hideRightBorder {
+  border-right-color: transparent;
+}
+
+.inner.hideBottomBorder {
+  border-bottom-color: transparent;
+}
+
+.inner.hideLeftBorder {
+  border-left-color: transparent;
+}
+
 .inner.selected {
   border-color: var(--color-gold);
   box-shadow: 0 0 0 3px var(--color-gold), 0 8px 24px rgba(255, 215, 0, 0.4);

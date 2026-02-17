@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { PieceGroup } from '../types';
 
 /** Estado mínimo para montar/desmontar el overlay. NO incluye ghostX/Y ni hoverPosition. */
 export interface DragState {
   isDragging: boolean;
   draggingPieceId: number | null;
+  draggingGroupId: number | null;
   ghostSize: number;
   ghostStartX: number;
   ghostStartY: number;
@@ -23,10 +25,12 @@ const DRAG_THRESHOLD_PX = 6;
 interface PieceLike {
   id: number;
   currentPosition: number;
+  groupId: number;
 }
 
 export function useDrag(
   pieces: PieceLike[],
+  groups: PieceGroup[],
   gridSize: number,
   onTap: (id: number) => void,
   onSwap: (pieceId1: number, pieceId2: number) => void,
@@ -39,6 +43,7 @@ export function useDrag(
   const [dragState, setDragState] = useState<DragState>({
     isDragging: false,
     draggingPieceId: null,
+    draggingGroupId: null,
     ghostSize: 0,
     ghostStartX: 0,
     ghostStartY: 0,
@@ -47,6 +52,7 @@ export function useDrag(
   const internal = useRef({
     active: false,
     pieceId: -1,
+    groupId: -1,
     startX: 0,
     startY: 0,
     movedEnough: false,
@@ -95,7 +101,13 @@ export function useDrag(
       }
 
       const targetPiece = pieces.find((p) => p.currentPosition === position);
-      if (!targetPiece || targetPiece.id === internal.current.pieceId) {
+      if (!targetPiece) {
+        el.style.display = 'none';
+        return;
+      }
+
+      // Don't show drop target if target is part of the same group
+      if (targetPiece.groupId === internal.current.groupId) {
         el.style.display = 'none';
         return;
       }
@@ -121,6 +133,7 @@ export function useDrag(
         ? {
             isDragging: false,
             draggingPieceId: null,
+            draggingGroupId: null,
             ghostSize: 0,
             ghostStartX: 0,
             ghostStartY: 0,
@@ -137,10 +150,12 @@ export function useDrag(
 
     e.currentTarget.setPointerCapture(e.pointerId);
 
+    const piece = pieces.find((p) => p.id === pieceId);
     const board = boardRef.current;
     internal.current = {
       active: true,
       pieceId,
+      groupId: piece?.groupId ?? -1,
       startX: e.clientX,
       startY: e.clientY,
       movedEnough: false,
@@ -148,20 +163,62 @@ export function useDrag(
       dragStartNotified: false,
       boardRect: board ? board.getBoundingClientRect() : null,
     };
-  }, []);
+  }, [pieces]);
 
   const startDragRef = useRef<() => void>(() => {});
   startDragRef.current = () => {
     const state = internal.current;
     if (!state.active || state.pieceId < 0) return;
 
-    const size = getPieceSizePx();
+    // Find the group to determine ghost size
+    const group = groups.find((g) => g.id === state.groupId);
+    const pieceSize = getPieceSizePx();
+    
+    if (group && group.pieceIds.length > 1) {
+      // Calculate bounding box of the group
+      const groupPieces = group.pieceIds
+        .map((id) => pieces.find((p) => p.id === id))
+        .filter((p): p is PieceLike => Boolean(p));
+      
+      if (groupPieces.length > 0) {
+        const positions = groupPieces.map((p) => p.currentPosition);
+        const rows = positions.map((pos) => Math.floor(pos / gridSize));
+        const cols = positions.map((pos) => pos % gridSize);
+        
+        const minRow = Math.min(...rows);
+        const maxRow = Math.max(...rows);
+        const minCol = Math.min(...cols);
+        const maxCol = Math.max(...cols);
+        
+        const groupWidth = maxCol - minCol + 1;
+        const groupHeight = maxRow - minRow + 1;
+        
+        // Use the piece size as base (ghostSize will be used to calculate group dimensions in DragGhost)
+        const size = pieceSize;
+        const startX = state.startX - (pieceSize * groupWidth) / 2;
+        const startY = state.startY - (pieceSize * groupHeight) / 2;
+        
+        setDragState({
+          isDragging: true,
+          draggingPieceId: state.pieceId,
+          draggingGroupId: state.groupId,
+          ghostSize: size,
+          ghostStartX: startX,
+          ghostStartY: startY,
+        });
+        return;
+      }
+    }
+    
+    // Single piece or no group found
+    const size = pieceSize;
     const startX = state.startX - size / 2;
     const startY = state.startY - size / 2;
 
     setDragState({
       isDragging: true,
       draggingPieceId: state.pieceId,
+      draggingGroupId: state.groupId,
       ghostSize: size,
       ghostStartX: startX,
       ghostStartY: startY,
@@ -209,7 +266,8 @@ export function useDrag(
         const targetPos = getPositionFromPoint(e.clientX, e.clientY);
         if (targetPos !== null) {
           const targetPiece = pieces.find((p) => p.currentPosition === targetPos);
-          if (targetPiece && targetPiece.id !== state.pieceId) {
+          if (targetPiece && targetPiece.groupId !== state.groupId) {
+            // Swap using anchor pieces (the piece that was clicked)
             onSwap(state.pieceId, targetPiece.id);
           }
         }
@@ -235,11 +293,15 @@ export function useDrag(
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerCancel);
     };
-  }, [pieces, getPositionFromPoint, getPieceSizePx, onTap, onSwap, onDragStart, resetDragVisual, updateDropTarget]);
+  }, [pieces, groups, getPositionFromPoint, getPieceSizePx, onTap, onSwap, onDragStart, resetDragVisual, updateDropTarget]);
 
   const isDraggingPiece = useCallback(
-    (pieceId: number) => dragState.isDragging && dragState.draggingPieceId === pieceId,
-    [dragState.isDragging, dragState.draggingPieceId]
+    (pieceId: number) => {
+      if (!dragState.isDragging || dragState.draggingGroupId === null) return false;
+      const piece = pieces.find((p) => p.id === pieceId);
+      return piece?.groupId === dragState.draggingGroupId;
+    },
+    [dragState.isDragging, dragState.draggingGroupId, pieces]
   );
 
   return { dragState, boardRef, ghostRef, dropTargetRef, onPiecePointerDown, isDraggingPiece };

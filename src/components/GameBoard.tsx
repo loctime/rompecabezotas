@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, useEffect, useRef } from 'react';
+import { memo, useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import type { PuzzlePiece as PuzzlePieceType, PieceGroup } from '../types';
 import { PuzzlePiece } from './PuzzlePiece';
@@ -124,10 +124,41 @@ export function GameBoard({
   }, [groups]);
 
   const pieceById = useMemo(() => new Map(pieces.map((piece) => [piece.id, piece])), [pieces]);
+  const pieceByPosition = useMemo(() => new Map(pieces.map((piece) => [piece.currentPosition, piece])), [pieces]);
   const mergedGroups = useMemo(() => groups.filter((g) => g.pieceIds.length > 1), [groups]);
+
+  // Helper to check if a piece shares groupId with neighbor
+  const hasSameGroupNeighbor = useCallback(
+    (piece: PuzzlePieceType, direction: 'top' | 'right' | 'bottom' | 'left'): boolean => {
+      const row = Math.floor(piece.currentPosition / gridSize);
+      const col = piece.currentPosition % gridSize;
+      let neighborPos: number | null = null;
+
+      switch (direction) {
+        case 'top':
+          neighborPos = row > 0 ? piece.currentPosition - gridSize : null;
+          break;
+        case 'right':
+          neighborPos = col < gridSize - 1 ? piece.currentPosition + 1 : null;
+          break;
+        case 'bottom':
+          neighborPos = row < gridSize - 1 ? piece.currentPosition + gridSize : null;
+          break;
+        case 'left':
+          neighborPos = col > 0 ? piece.currentPosition - 1 : null;
+          break;
+      }
+
+      if (neighborPos === null) return false;
+      const neighbor = pieceByPosition.get(neighborPos);
+      return neighbor?.groupId === piece.groupId;
+    },
+    [gridSize, pieceByPosition]
+  );
 
   const { dragState, boardRef, ghostRef, dropTargetRef, onPiecePointerDown, isDraggingPiece } = useDrag(
     pieces,
+    groups,
     gridSize,
     onPieceClick,
     onSwap,
@@ -156,6 +187,10 @@ export function GameBoard({
             isMerging={mergingPieceIds.has(piece.id)}
             isHint={hintPieceId === piece.id}
             isDragging={isDraggingPiece(piece.id)}
+            hideTopBorder={hasSameGroupNeighbor(piece, 'top')}
+            hideRightBorder={hasSameGroupNeighbor(piece, 'right')}
+            hideBottomBorder={hasSameGroupNeighbor(piece, 'bottom')}
+            hideLeftBorder={hasSameGroupNeighbor(piece, 'left')}
             onPointerDown={(e) => onPiecePointerDown(piece.id, e)}
             onClick={() => {}}
           />
@@ -167,7 +202,7 @@ export function GameBoard({
       </motion.div>
 
       <DropTargetOverlay dropTargetRef={dropTargetRef} isDragging={dragState.isDragging} />
-      <DragGhost dragState={dragState} ghostRef={ghostRef} pieces={pieces} imageUrl={imageUrl} gridSize={gridSize} />
+      <DragGhost dragState={dragState} ghostRef={ghostRef} pieces={pieces} groups={groups} imageUrl={imageUrl} gridSize={gridSize} />
     </>
   );
 }
