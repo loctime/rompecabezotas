@@ -11,7 +11,7 @@
   padding: var(--space-5);
 }
 
-/* ── Confetti ── */
+/* Confetti */
 .confettiContainer {
   position: fixed;
   inset: 0;
@@ -19,23 +19,21 @@
   overflow: hidden;
   z-index: 99;
 }
-
 .confettiPiece {
   position: absolute;
   top: -20px;
   animation: confettiFall linear forwards;
 }
-
 @keyframes confettiFall {
-  0%   { transform: translateY(0) rotate(0deg);    opacity: 1; }
-  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  0%   { transform: translateY(0) rotate(0deg);       opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg);  opacity: 0; }
 }
 
-/* ── Card ── */
+/* Card */
 .card {
   background: var(--gradient-card);
   border-radius: var(--radius-xl);
-  padding: var(--space-10);
+  padding: var(--space-8) var(--space-8) var(--space-6);
   max-width: 360px;
   width: 100%;
   text-align: center;
@@ -43,49 +41,77 @@
   outline: 1px solid var(--color-white-20);
   position: relative;
   z-index: 101;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Top row: emoji + record badge */
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
 }
 
 .emoji {
-  font-size: 72px;
+  font-size: 56px;
   line-height: 1;
-  margin-bottom: var(--space-4);
   display: block;
+}
+
+.recordBadge {
+  background: linear-gradient(135deg, #FFD700, #ff9d00);
+  color: var(--color-teal-900);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 99px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .title {
   font-family: var(--font-display);
-  font-size: 2.2rem;
+  font-size: 2rem;
   font-weight: 800;
   color: var(--color-white);
-  margin-bottom: var(--space-2);
+  margin: 0;
 }
 
 .subtitle {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--color-white-80);
-  margin-bottom: var(--space-6);
+  margin: 0;
 }
 
-/* ── Stats ── */
+/* Stars row */
+.starsRow {
+  padding: var(--space-2) 0;
+}
+
+/* Stats */
 .stats {
   display: flex;
   align-items: center;
   gap: var(--space-4);
   background: var(--color-black-20);
   border-radius: var(--radius-md);
-  padding: var(--space-5);
-  margin-bottom: var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  width: 100%;
 }
 
 .stat {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  align-items: center;
+  gap: 2px;
 }
 
 .statLabel {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--color-white-80);
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -93,68 +119,64 @@
 
 .statValue {
   font-family: var(--font-display);
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 700;
   color: var(--color-white);
+  line-height: 1;
+}
+
+.statSub {
+  font-size: 0.7rem;
+  color: var(--color-gold);
 }
 
 .divider {
   width: 1px;
   height: 40px;
   background: var(--color-white-20);
+  flex-shrink: 0;
 }
 
-/* ── Actions ── */
+/* Actions */
 .actions {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
+  width: 100%;
 }
 
 .btnPrimary {
-  padding: var(--space-4) var(--space-8);
-  font-size: 1.05rem;
-  font-weight: 600;
+  padding: var(--space-4) var(--space-6);
+  font-size: 1rem;
+  font-weight: 700;
   background: var(--color-gold);
   color: var(--color-teal-800);
   border-radius: var(--radius-md);
   transition: transform var(--duration-fast) var(--ease-bounce),
-              box-shadow var(--duration-fast) var(--ease-smooth);
+              box-shadow var(--duration-fast);
   box-shadow: 0 4px 16px rgba(255, 215, 0, 0.35);
 }
-
 .btnPrimary:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(255, 215, 0, 0.45);
 }
-
-.btnPrimary:active {
-  transform: translateY(0);
-}
+.btnPrimary:active { transform: translateY(0); }
 
 .btnSecondary {
-  padding: var(--space-3) var(--space-8);
-  font-size: 0.95rem;
+  padding: var(--space-3) var(--space-6);
+  font-size: 0.9rem;
   color: var(--color-white-80);
   border: 1.5px solid var(--color-white-40);
   border-radius: var(--radius-md);
   transition: background var(--duration-fast), color var(--duration-fast);
 }
-
 .btnSecondary:hover {
   background: var(--color-white-20);
   color: var(--color-white);
 }
 
-/* ── Mobile ── */
 @media (max-width: 400px) {
-  .card {
-    padding: var(--space-6);
-  }
-  .title {
-    font-size: 1.8rem;
-  }
-  .statValue {
-    font-size: 1.6rem;
-  }
+  .card { padding: var(--space-6) var(--space-5); }
+  .title { font-size: 1.6rem; }
+  .statValue { font-size: 1.5rem; }
 }
