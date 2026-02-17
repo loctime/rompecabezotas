@@ -1,0 +1,53 @@
+.board {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  aspect-ratio: 1;
+  background: var(--color-white-10);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-board);
+  outline: 1px solid var(--color-white-10);
+  /* Prevent default touch scroll while dragging pieces */
+  touch-action: none;
+}
+
+/* Group border SVG overlay */
+.groupBorderSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+  overflow: visible;
+}
+
+.groupBorderSvg line {
+  stroke: var(--color-gold);
+  opacity: 0.85;
+  filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.6));
+}
+
+/* Drop target highlight */
+.dropTarget {
+  position: absolute;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 188, 212, 0.15);
+  border: 2px dashed var(--color-cyan);
+  box-shadow: inset 0 0 12px rgba(0, 188, 212, 0.2);
+  pointer-events: none;
+  z-index: 4;
+  animation: dropPulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes dropPulse {
+  from { background: rgba(0, 188, 212, 0.1); }
+  to   { background: rgba(0, 188, 212, 0.25); }
+}
+
+@media (max-width: 520px) {
+  .board {
+    max-width: min(92vw, 420px);
+  }
+}
