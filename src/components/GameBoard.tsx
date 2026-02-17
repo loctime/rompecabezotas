@@ -78,19 +78,6 @@ const GroupBorder = memo(function GroupBorder({ group, pieceById, gridSize }: Gr
   );
 });
 
-/** Overlay de drop target actualizado imperativamente por useDrag (evita rerenders) */
-const DropTargetOverlay = memo(function DropTargetOverlay({
-  dropTargetRef,
-  isDragging,
-}: {
-  dropTargetRef: React.RefObject<HTMLDivElement | null>;
-  isDragging: boolean;
-}) {
-  if (!isDragging) return null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <div ref={dropTargetRef as any} className={styles.dropTargetOverlay} aria-hidden style={{ display: 'none' }} />;
-});
-
 export function GameBoard({
   pieces,
   groups,
@@ -172,8 +159,7 @@ export function GameBoard({
   );
 
   return (
-    <>
-      <div
+    <div
         ref={boardRef}
         className={styles.board}
         role="grid"
@@ -202,10 +188,8 @@ export function GameBoard({
         {mergedGroups.map((group) => (
           <GroupBorder key={group.id} group={group} pieceById={pieceById} gridSize={gridSize} />
         ))}
-      </div>
-
-      <DropTargetOverlay dropTargetRef={dropTargetRef} isDragging={dragState.isDragging} />
-      <DragGhost dragState={dragState} ghostRef={ghostRef} pieces={pieces} groups={groups} imageUrl={imageUrl} gridSize={gridSize} />
-    </>
+        <div ref={dropTargetRef as any} className={styles.dropTargetOverlay} aria-hidden style={{ display: 'none' }} />
+        <DragGhost dragState={dragState} ghostRef={ghostRef} pieces={pieces} groups={groups} imageUrl={imageUrl} gridSize={gridSize} />
+    </div>
   );
 }
