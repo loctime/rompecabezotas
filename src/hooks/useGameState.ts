@@ -5,6 +5,7 @@ import {
   generateInitialGroups,
   swapPiecesOrGroups,
   checkAndMergeAdjacentGroups,
+  moveGroupToPosition,
   isPuzzleComplete,
 } from '../utils/puzzleLogic';
 
@@ -63,6 +64,36 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case 'MOVE_GROUP': {
+      const { groupId, targetPosition, gridSize } = action;
+
+      const { pieces: moved, groups: movedGroups } = moveGroupToPosition(
+        state.pieces,
+        state.groups,
+        groupId,
+        targetPosition,
+        gridSize
+      );
+
+      const { pieces: final, groups: finalGroups } = checkAndMergeAdjacentGroups(
+        moved,
+        movedGroups,
+        gridSize
+      );
+
+      const complete = isPuzzleComplete(final);
+
+      return {
+        ...state,
+        pieces: final,
+        groups: finalGroups,
+        selectedPieceId: null,
+        moves: state.moves + 1,
+        isComplete: complete,
+        elapsedTime: state.startTime ? Date.now() - state.startTime : 0,
+      };
+    }
+
     case 'TICK':
       if (state.isComplete || !state.startTime) return state;
       return { ...state, elapsedTime: action.elapsed };
@@ -81,6 +112,7 @@ export interface UseGameStateReturn {
   elapsedTime: GameState['elapsedTime'];
   handlePieceClick: (pieceId: number) => void;
   handleSwap: (pieceId1: number, pieceId2: number) => void;
+  handleDropGroup: (groupId: number, targetPosition: number) => void;
   resetLevel: () => void;
 }
 
@@ -113,6 +145,14 @@ export function useGameState(level: Level): UseGameStateReturn {
     [state.isComplete, level.gridSize]
   );
 
+  const handleDropGroup = useCallback(
+    (groupId: number, targetPosition: number) => {
+      if (state.isComplete) return;
+      dispatch({ type: 'MOVE_GROUP', groupId, targetPosition, gridSize: level.gridSize });
+    },
+    [state.isComplete, level.gridSize]
+  );
+
   const handlePieceClick = useCallback(
     (pieceId: number) => {
       if (state.isComplete) return;
@@ -141,6 +181,7 @@ export function useGameState(level: Level): UseGameStateReturn {
     elapsedTime: state.elapsedTime,
     handlePieceClick,
     handleSwap,
+    handleDropGroup,
     resetLevel,
   };
 }

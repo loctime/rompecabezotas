@@ -302,3 +302,161 @@ export function checkAndMergeAdjacentGroups(
 
   return { pieces: currentPieces, groups: currentGroups, mergedCount };
 }
+
+// ─── FREE MOVEMENT ──────────────────────────────────────────────────────────────
+
+/**
+ * Finds the nearest free position to a given position, searching in a spiral pattern
+ */
+function findNearestFreePosition(
+  targetPos: number,
+  occupiedPositions: Set<number>,
+  gridSize: number,
+  total: number
+): number | null {
+  if (!occupiedPositions.has(targetPos)) return targetPos;
+
+  // Spiral search: check positions in expanding radius
+  const maxRadius = gridSize;
+  for (let radius = 1; radius <= maxRadius; radius++) {
+    const targetRow = Math.floor(targetPos / gridSize);
+    const targetCol = targetPos % gridSize;
+
+    // Check all positions at this radius
+    for (let dr = -radius; dr <= radius; dr++) {
+      for (let dc = -radius; dc <= radius; dc++) {
+        // Only check positions at exactly this radius (not inside)
+        if (Math.abs(dr) !== radius && Math.abs(dc) !== radius) continue;
+
+        const newRow = targetRow + dr;
+        const newCol = targetCol + dc;
+
+        if (newRow < 0 || newRow >= gridSize || newCol < 0 || newCol >= gridSize) continue;
+
+        const newPos = newRow * gridSize + newCol;
+        if (newPos < 0 || newPos >= total) continue;
+        if (!occupiedPositions.has(newPos)) return newPos;
+      }
+    }
+  }
+
+  return null; // No free position found
+}
+
+/**
+ * Moves a group to a target position with push logic.
+ * If target positions are occupied, displaces existing pieces to nearby free positions.
+ * Maintains the relative shape of the group.
+ */
+export function moveGroupToPosition(
+  pieces: PuzzlePiece[],
+  groups: PieceGroup[],
+  groupId: number,
+  targetPosition: number,
+  gridSize: number
+): { pieces: PuzzlePiece[]; groups: PieceGroup[] } {
+  const groupMap = buildGroupMap(groups);
+  const group = groupMap.get(groupId);
+  if (!group) return { pieces, groups };
+
+  const groupPieces = group.pieceIds
+    .map((id) => pieces.find((p) => p.id === id))
+    .filter((p): p is PuzzlePiece => Boolean(p));
+
+  if (groupPieces.length === 0) return { pieces, groups };
+
+  // Find the anchor piece (top-left of the group)
+  const groupPositions = groupPieces.map((p) => p.currentPosition);
+  const groupRows = groupPositions.map((pos) => Math.floor(pos / gridSize));
+  const groupCols = groupPositions.map((pos) => pos % gridSize);
+
+  const minRow = Math.min(...groupRows);
+  const minCol = Math.min(...groupCols);
+
+  const anchorPiece = groupPieces.find((p) => {
+    const row = Math.floor(p.currentPosition / gridSize);
+    const col = p.currentPosition % gridSize;
+    return row === minRow && col === minCol;
+  }) || groupPieces[0];
+
+  // Calculate offset needed to move anchor to target position
+  const anchorCurrentRow = Math.floor(anchorPiece.currentPosition / gridSize);
+  const anchorCurrentCol = anchorPiece.currentPosition % gridSize;
+  const targetRow = Math.floor(targetPosition / gridSize);
+  const targetCol = targetPosition % gridSize;
+
+  const deltaRow = targetRow - anchorCurrentRow;
+  const deltaCol = targetCol - anchorCurrentCol;
+
+  // Calculate new positions for all pieces in the group
+  const groupPieceIds = new Set(group.pieceIds);
+  const newGroupPositions = new Map<number, number>();
+
+  for (const piece of groupPieces) {
+    const currentRow = Math.floor(piece.currentPosition / gridSize);
+    const currentCol = piece.currentPosition % gridSize;
+    const newRow = currentRow + deltaRow;
+    const newCol = currentCol + deltaCol;
+
+    // Validate bounds
+    if (newRow < 0 || newRow >= gridSize || newCol < 0 || newCol >= gridSize) {
+      return { pieces, groups }; // Out of bounds, abort
+    }
+
+    const newPos = newRow * gridSize + newCol;
+    newGroupPositions.set(piece.id, newPos);
+  }
+
+  // Build map of all occupied positions (excluding group pieces)
+  const occupiedPositions = new Set<number>();
+  for (const piece of pieces) {
+    if (!groupPieceIds.has(piece.id)) {
+      occupiedPositions.add(piece.currentPosition);
+    }
+  }
+
+  // Check for collisions and push displaced pieces
+  const displacedPieces: Array<{ id: number; oldPos: number; newPos: number }> = [];
+  const total = pieces.length;
+
+  for (const [pieceId, newPos] of newGroupPositions.entries()) {
+    if (occupiedPositions.has(newPos)) {
+      // Find the piece currently at this position
+      const displacedPiece = pieces.find((p) => p.currentPosition === newPos && !groupPieceIds.has(p.id));
+      if (displacedPiece) {
+        // Find a free position for the displaced piece
+        const freePos = findNearestFreePosition(newPos, occupiedPositions, gridSize, total);
+        if (freePos === null) {
+          return { pieces, groups }; // Cannot resolve collision, abort
+        }
+        displacedPieces.push({ id: displacedPiece.id, oldPos: displacedPiece.currentPosition, newPos: freePos });
+        occupiedPositions.delete(displacedPiece.currentPosition);
+        occupiedPositions.add(freePos);
+      }
+    }
+    occupiedPositions.add(newPos);
+  }
+
+  // Apply all position changes
+  const updatedPieces = pieces.map((piece) => {
+    if (groupPieceIds.has(piece.id)) {
+      return { ...piece, currentPosition: newGroupPositions.get(piece.id)! };
+    }
+    const displacement = displacedPieces.find((d) => d.id === piece.id);
+    if (displacement) {
+      return { ...piece, currentPosition: displacement.newPos };
+    }
+    return piece;
+  });
+
+  // Update group positions
+  const updatedGroups = groups.map((g) => {
+    if (g.id === groupId) {
+      const gPieces = updatedPieces.filter((p) => p.groupId === g.id);
+      return { ...g, positions: gPieces.map((p) => p.currentPosition) };
+    }
+    return g;
+  });
+
+  return { pieces: updatedPieces, groups: updatedGroups };
+}

@@ -24,7 +24,7 @@ function formatTime(ms: number): string {
 }
 
 export function GameScreen({ level, isDaily = false, onBack, onNextLevel, onLevelComplete }: Props) {
-  const { pieces, groups, selectedPieceId, isComplete, moves, elapsedTime, handlePieceClick, handleSwap, resetLevel } = useGameState(level);
+  const { pieces, groups, selectedPieceId, isComplete, moves, elapsedTime, handlePieceClick, handleSwap, handleDropGroup, resetLevel } = useGameState(level);
   const { play, enabled: soundEnabled, toggle: toggleSound } = useSound();
   const { hintPieceId, triggerHint, dismissHint, isOnCooldown } = useHint(pieces);
   const [completionResult, setCompletionResult] = useState<{ stars: number; isNewRecord: boolean; previousBestMoves?: number } | null>(null);
@@ -107,6 +107,7 @@ export function GameScreen({ level, isDaily = false, onBack, onNextLevel, onLeve
           gridSize={level.gridSize}
           onPieceClick={handlePieceClickWithSound}
           onSwap={handleSwapWithSound}
+          onDropGroup={handleDropGroup}
           onDragStart={handleDragStart}
         />
       </main>

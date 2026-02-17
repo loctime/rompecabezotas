@@ -9,6 +9,7 @@
     0 0 0 2px rgba(255, 215, 0, 0.3),
     0 16px 40px rgba(0, 0, 0, 0.5);
   opacity: 0.92;
-  transform: scale(1.08) rotate(2deg);
-  will-change: transform;
+  /* Box-sizing ensures border doesn't add to width/height */
+  box-sizing: border-box;
+  /* Position updated ONLY via left/top - no transform, no scale, no animation */
 }

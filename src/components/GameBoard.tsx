@@ -1,5 +1,4 @@
 import { memo, useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import type { PuzzlePiece as PuzzlePieceType, PieceGroup } from '../types';
 import { PuzzlePiece } from './PuzzlePiece';
 import { DragGhost } from './DragGhost';
@@ -15,6 +14,7 @@ interface Props {
   gridSize: number;
   onPieceClick: (id: number) => void;
   onSwap: (pieceId1: number, pieceId2: number) => void;
+  onDropGroup: (groupId: number, targetPosition: number) => void;
   onDragStart: () => void;
 }
 
@@ -100,6 +100,7 @@ export function GameBoard({
   gridSize,
   onPieceClick,
   onSwap,
+  onDropGroup,
   onDragStart,
 }: Props) {
   const [mergingPieceIds, setMergingPieceIds] = useState<Set<number>>(new Set());
@@ -166,17 +167,15 @@ export function GameBoard({
     gridSize,
     onPieceClick,
     onSwap,
+    onDropGroup,
     onDragStart
   );
 
   return (
     <>
-      <motion.div
+      <div
         ref={boardRef}
         className={styles.board}
-        initial={{ scale: 0.85, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.45, ease: [0.34, 1.56, 0.64, 1] }}
         role="grid"
         aria-label={`Tablero de puzzle ${gridSize}x${gridSize}`}
       >
@@ -203,7 +202,7 @@ export function GameBoard({
         {mergedGroups.map((group) => (
           <GroupBorder key={group.id} group={group} pieceById={pieceById} gridSize={gridSize} />
         ))}
-      </motion.div>
+      </div>
 
       <DropTargetOverlay dropTargetRef={dropTargetRef} isDragging={dragState.isDragging} />
       <DragGhost dragState={dragState} ghostRef={ghostRef} pieces={pieces} groups={groups} imageUrl={imageUrl} gridSize={gridSize} />

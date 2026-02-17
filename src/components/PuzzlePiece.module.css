@@ -5,12 +5,16 @@
   user-select: none;
   -webkit-user-select: none;
   z-index: 1;
+  /* During drag, pieces stay in place - no movement */
+  will-change: opacity;
 }
 
 /* Add padding only when piece is isolated (no same-group neighbors) */
 .wrapper.hasNeighbors {
   padding: 0;
 }
+
+/* No hover effects needed - pieces are static */
 
 .inner {
   display: block;
@@ -21,12 +25,14 @@
   border: 2px solid rgba(74, 155, 142, 0.5);
   box-shadow: var(--shadow-piece);
   cursor: pointer;
+  /* Simple transitions - NO transform */
   transition:
     border-color var(--duration-base) var(--ease-smooth),
     border-width var(--duration-base) var(--ease-smooth),
-    box-shadow var(--duration-base) var(--ease-smooth),
-    transform var(--duration-fast) var(--ease-smooth);
+    box-shadow var(--duration-base) var(--ease-smooth);
   outline: none;
+  /* NO transforms - pieces are static */
+  transform: none;
 }
 
 /* Completely remove borders when pieces are merged - no gap, no line */
@@ -50,19 +56,21 @@
   border-left-style: none;
 }
 
-/* Reduce box-shadow when borders are hidden to avoid visual gaps */
+/* Completely remove box-shadow and border-radius when borders are hidden */
 .inner.hideTopBorder,
 .inner.hideRightBorder,
 .inner.hideBottomBorder,
 .inner.hideLeftBorder {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .inner.selected {
   border-color: var(--color-gold);
   box-shadow: 0 0 0 3px var(--color-gold), 0 8px 24px rgba(255, 215, 0, 0.4);
-  transform: scale(1.06);
   z-index: 10;
+  /* NO scale transform - pieces stay static */
+  transform: none;
 }
 
 .inner.correct {
@@ -72,7 +80,19 @@
 
 .inner.inGroup {
   border-color: rgba(74, 155, 142, 0.15);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  /* Remove box-shadow completely for pieces in groups - prevents visual gaps */
+  box-shadow: none;
+  /* Disable all transforms for pieces in groups */
+  transform: none;
+  /* Remove border-radius for internal pieces - only perimeter should be rounded */
+  border-radius: 0;
+}
+
+/* Disable hover completely for pieces in groups */
+.inner.inGroup:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
 }
 
 .inner.merging {
@@ -101,12 +121,22 @@
 .inner.dragging {
   cursor: grabbing;
   border-color: var(--color-gold);
+  /* Piece is hidden during drag, ghost handles visual */
+  opacity: 0;
+  pointer-events: none;
 }
 
 @media (hover: hover) {
-  .inner:not(.selected):not(.dragging):hover {
+  /* Simple hover effect - NO transform/scale */
+  .inner:not(.selected):not(.dragging):not(.inGroup):hover {
     border-color: var(--color-teal-400);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
-    transform: scale(1.03);
+    transform: none;
+  }
+  
+  /* No hover effects when dragging or in group */
+  .inner.dragging:hover,
+  .inner.inGroup:hover {
+    transform: none;
   }
 }

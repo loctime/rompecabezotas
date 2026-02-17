@@ -1,5 +1,4 @@
 import { memo, useState, useEffect, type CSSProperties } from 'react';
-import { motion } from 'framer-motion';
 import type { PuzzlePiece as PuzzlePieceType } from '../types';
 import styles from './PuzzlePiece.module.css';
 
@@ -76,6 +75,9 @@ export const PuzzlePiece = memo(function PuzzlePiece({
   ]
     .filter(Boolean)
     .join(' ');
+  
+  // Pieces are static - no hover effects needed
+  const wrapperClass = styles.wrapper;
 
   const bgPosX = gridSize > 1 ? (piece.col / (gridSize - 1)) * 100 : 0;
   const bgPosY = gridSize > 1 ? (piece.row / (gridSize - 1)) * 100 : 0;
@@ -88,14 +90,13 @@ export const PuzzlePiece = memo(function PuzzlePiece({
   };
 
   return (
-    <motion.div
-      className={styles.wrapper}
-      style={pieceStyle}
-      initial={{ opacity: 0, scale: 0.92 }}
-      animate={{ opacity: isDragging ? 0.28 : 1, scale: isDragging ? 0.95 : 1 }}
-      transition={{ duration: 0.22 }}
-      layout
-      layoutId={`piece-${piece.id}`}
+    <div
+      className={wrapperClass}
+      style={{
+        ...pieceStyle,
+        opacity: isDragging ? 0 : 1, // Completely hide during drag - ghost handles visual
+        pointerEvents: isDragging ? 'none' : 'auto', // Disable interaction during drag
+      }}
     >
       <button
         className={innerClass}
@@ -109,8 +110,9 @@ export const PuzzlePiece = memo(function PuzzlePiece({
           backgroundSize: `${gridSize * 100}% ${gridSize * 100}%`,
           backgroundPosition: `${bgPosX}% ${bgPosY}%`,
           cursor: isDragging ? 'grabbing' : 'grab',
+          pointerEvents: isDragging ? 'none' : 'auto', // Disable button interaction during drag
         }}
       />
-    </motion.div>
+    </div>
   );
 });

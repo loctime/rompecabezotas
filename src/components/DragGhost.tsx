@@ -1,9 +1,7 @@
-import { memo, useMemo } from 'react';
+import { memo } from 'react';
 import type { DragState } from '../hooks/useDrag';
 import type { PuzzlePiece, PieceGroup } from '../types';
 import styles from './DragGhost.module.css';
-
-const FALLBACK_IMAGE = '/images/levels/fallback.png';
 
 interface Props {
   dragState: DragState;
@@ -23,43 +21,55 @@ export const DragGhost = memo(function DragGhost({ dragState, ghostRef, pieces, 
   const group = groups.find((g) => g.id === dragState.draggingGroupId);
   if (!group) return null;
 
-  // Calculate bounding box of the group
+  // Use cached bounding box if available, otherwise calculate
+  let minRow: number, maxRow: number, minCol: number, maxCol: number;
+  
+  if (dragState.groupBoundingBox) {
+    ({ minRow, maxRow, minCol, maxCol } = dragState.groupBoundingBox);
+  } else {
+    // Fallback: calculate bounding box
+    const groupPieces = group.pieceIds
+      .map((id) => pieces.find((p) => p.id === id))
+      .filter((p): p is PuzzlePiece => Boolean(p));
+
+    if (groupPieces.length === 0) return null;
+
+    const positions = groupPieces.map((p) => p.currentPosition);
+    const rows = positions.map((pos) => Math.floor(pos / gridSize));
+    const cols = positions.map((pos) => pos % gridSize);
+
+    minRow = Math.min(...rows);
+    maxRow = Math.max(...rows);
+    minCol = Math.min(...cols);
+    maxCol = Math.max(...cols);
+  }
+
+  // Find the top-left piece of the group (by correct row/col, not current position)
   const groupPieces = group.pieceIds
     .map((id) => pieces.find((p) => p.id === id))
     .filter((p): p is PuzzlePiece => Boolean(p));
 
-  if (groupPieces.length === 0) return null;
+  // Find top-left piece using correct coordinates (row/col)
+  const minCorrectRow = Math.min(...groupPieces.map((p) => p.row));
+  const topRowPieces = groupPieces.filter((p) => p.row === minCorrectRow);
+  const minCorrectCol = Math.min(...topRowPieces.map((p) => p.col));
+  const topLeftPiece = topRowPieces.find((p) => p.col === minCorrectCol) || groupPieces[0];
 
-  const positions = groupPieces.map((p) => p.currentPosition);
-  const rows = positions.map((pos) => Math.floor(pos / gridSize));
-  const cols = positions.map((pos) => pos % gridSize);
-
-  const minRow = Math.min(...rows);
-  const maxRow = Math.max(...rows);
-  const minCol = Math.min(...cols);
-  const maxCol = Math.max(...cols);
-
-  // Find the top-left piece of the group (by current position)
-  const topLeftPiece = groupPieces.find((p) => {
-    const row = Math.floor(p.currentPosition / gridSize);
-    const col = p.currentPosition % gridSize;
-    return row === minRow && col === minCol;
-  }) || groupPieces[0];
-
-  // Use correct coordinates (row/col) for background position, not currentPosition
-  // This ensures the image shows the correct portion regardless of where the group is on the board
+  // Use correct coordinates (row/col) for background position
   const bgPosX = gridSize > 1 ? (topLeftPiece.col / (gridSize - 1)) * 100 : 0;
   const bgPosY = gridSize > 1 ? (topLeftPiece.row / (gridSize - 1)) * 100 : 0;
 
-  // Calculate size of the group (ghostSize is the size of a single piece)
-  const groupWidth = maxCol - minCol + 1;
-  const groupHeight = maxRow - minRow + 1;
-  const groupSizeX = dragState.ghostSize * groupWidth;
-  const groupSizeY = dragState.ghostSize * groupHeight;
+  // Calculate size of the group using cell dimensions (geometrically correct)
+  const bboxCols = maxCol - minCol + 1;
+  const bboxRows = maxRow - minRow + 1;
+  // Use cellWidthPx and cellHeightPx for exact pixel-perfect sizing
+  const groupSizeX = dragState.cellWidthPx * bboxCols;
+  const groupSizeY = dragState.cellHeightPx * bboxRows;
 
   return (
     <div
-      ref={ghostRef}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ref={ghostRef as any}
       className={styles.ghost}
       aria-hidden
       style={{
@@ -67,7 +77,6 @@ export const DragGhost = memo(function DragGhost({ dragState, ghostRef, pieces, 
         top: dragState.ghostStartY,
         width: groupSizeX,
         height: groupSizeY,
-        transform: 'translate3d(0, 0, 0)',
         backgroundImage: `url("${imageUrl}")`,
         backgroundSize: `${gridSize * 100}% ${gridSize * 100}%`,
         backgroundPosition: `${bgPosX}% ${bgPosY}%`,
