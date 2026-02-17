@@ -1,8 +1,7 @@
 import type { Level, ProgressMap } from '../types';
+import { calculateStars } from './stars';
 
 const STORAGE_KEY = 'jigsolitaire_v2_progress';
-
-// ─── READ ─────────────────────────────────────────────────────────────────────
 
 function loadProgress(): ProgressMap {
   try {
@@ -13,22 +12,14 @@ function loadProgress(): ProgressMap {
   }
 }
 
-// ─── WRITE ────────────────────────────────────────────────────────────────────
-
 function saveProgress(map: ProgressMap): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
   } catch {
-    // Storage full or unavailable — silent fail, game still works
+    // Storage full or unavailable — silent fail
   }
 }
 
-// ─── PUBLIC API ───────────────────────────────────────────────────────────────
-
-/**
- * Merges the static level definitions with saved progress.
- * Never mutates LEVELS — returns a new array.
- */
 export function applyProgress(baseLevels: readonly Level[]): Level[] {
   const progress = loadProgress();
 
@@ -40,14 +31,11 @@ export function applyProgress(baseLevels: readonly Level[]): Level[] {
       completed: stats.completed,
       bestMoves: stats.bestMoves,
       bestTime: stats.bestTime,
+      stars: stats.stars,
     };
   });
 }
 
-/**
- * Applies unlock logic: a level is unlocked if id===1
- * or the previous level is completed.
- */
 export function applyUnlocks(levels: Level[]): Level[] {
   const completedIds = new Set(levels.filter((l) => l.completed).map((l) => l.id));
   return levels.map((level) => ({
@@ -56,25 +44,31 @@ export function applyUnlocks(levels: Level[]): Level[] {
   }));
 }
 
-/** Call after winning a level. Returns updated levels array. */
 export function recordLevelComplete(
   levels: Level[],
   levelId: number,
   moves: number,
-  timeMs: number
-): Level[] {
+  timeMs: number,
+  gridSize: number
+): { levels: Level[]; stars: number; isNewRecord: boolean; previousBestMoves?: number } {
   const progress = loadProgress();
   const existing = progress[levelId];
+  const starsEarned = calculateStars(moves, gridSize);
+
+  const isNewRecord =
+    !existing ||
+    moves < existing.bestMoves ||
+    starsEarned > (existing.stars ?? 0);
 
   progress[levelId] = {
     completed: true,
     bestMoves: existing ? Math.min(existing.bestMoves, moves) : moves,
     bestTime: existing ? Math.min(existing.bestTime, timeMs) : timeMs,
+    stars: existing ? Math.max(existing.stars ?? 0, starsEarned) : starsEarned,
   };
 
   saveProgress(progress);
 
-  // Return updated levels (with unlocks recalculated)
   const updated = levels.map((l) => {
     if (l.id !== levelId) return l;
     return {
@@ -82,13 +76,18 @@ export function recordLevelComplete(
       completed: true,
       bestMoves: progress[levelId].bestMoves,
       bestTime: progress[levelId].bestTime,
+      stars: progress[levelId].stars,
     };
   });
 
-  return applyUnlocks(updated);
+  return {
+    levels: applyUnlocks(updated),
+    stars: starsEarned,
+    isNewRecord,
+    previousBestMoves: existing?.bestMoves,
+  };
 }
 
-/** Wipe all progress (for dev/debug or "reset game" feature) */
 export function resetAllProgress(): void {
   localStorage.removeItem(STORAGE_KEY);
 }

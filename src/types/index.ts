@@ -24,6 +24,7 @@ export interface Level {
   completed: boolean;
   bestMoves?: number;
   bestTime?: number;
+  stars?: number;
 }
 
 // ─── GAME STATE ────────────────────────────────────────────────────────────────
@@ -53,9 +54,24 @@ export interface LevelStats {
   completed: boolean;
   bestMoves: number;
   bestTime: number;
+  stars?: number;
 }
 
 export type ProgressMap = Record<number, LevelStats>;
+
+export interface DailyChallenge {
+  date: string;
+  levelId: number;
+  completed: boolean;
+}
+
+export interface GlobalStats {
+  totalCompleted: number;
+  totalMoves: number;
+  totalTimeMs: number;
+  currentStreak: number;
+  lastDailyCompletedDate: string;
+}
 
 // ─── UI ───────────────────────────────────────────────────────────────────────
 

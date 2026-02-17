@@ -5,18 +5,15 @@
   flex-direction: column;
   align-items: center;
   padding: var(--space-5) var(--space-5) var(--space-10);
-  gap: var(--space-6);
+  gap: var(--space-4);
 }
 
-/* ── Logo ── */
-.logoArea {
-  text-align: center;
-  padding-top: var(--space-5);
-}
+/* Logo */
+.logoArea { text-align: center; padding-top: var(--space-4); }
 
 .logo {
   font-family: var(--font-display);
-  font-size: clamp(2.5rem, 10vw, 4rem);
+  font-size: clamp(2.2rem, 10vw, 3.6rem);
   font-weight: 800;
   color: var(--color-white);
   letter-spacing: -0.02em;
@@ -25,82 +22,72 @@
 }
 
 .tagline {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--color-white-80);
   margin-top: var(--space-2);
 }
 
-/* ── CTA ── */
-.ctaWrapper {
-  width: 100%;
-  max-width: 420px;
-}
+/* CTA */
+.ctaWrapper { width: 100%; max-width: 420px; }
 
 .ctaButton {
   width: 100%;
-  padding: var(--space-5) var(--space-6);
-  background: var(--color-cyan);
+  padding: var(--space-4) var(--space-6);
+  background: var(--color-teal-400);
   color: var(--color-white);
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-1);
-  box-shadow: 0 8px 28px rgba(0, 188, 212, 0.4);
-  transition: transform var(--duration-fast) var(--ease-bounce),
-              box-shadow var(--duration-fast);
+  gap: 2px;
+  box-shadow: 0 8px 28px rgba(110, 196, 184, 0.35);
+  transition: transform var(--duration-fast) var(--ease-bounce), box-shadow var(--duration-fast);
 }
-
 .ctaButton:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 36px rgba(0, 188, 212, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 36px rgba(110, 196, 184, 0.45);
 }
-
-.ctaButton:active {
-  transform: translateY(0);
-}
+.ctaButton:active { transform: translateY(0); }
 
 .ctaLabel {
   font-family: var(--font-display);
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
 .ctaLevel {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.85);
 }
 
-/* ── Content ── */
+/* Content */
 .content {
   width: 100%;
   max-width: 600px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-5);
 }
 
-/* ── Section ── */
-.section {}
-
+/* Section */
 .sectionTitle {
   font-family: var(--font-display);
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--color-white);
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-3);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .sectionGrid {
   font-family: var(--font-body);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 500;
   color: var(--color-white-80);
   background: var(--color-white-10);
@@ -110,14 +97,14 @@
   text-transform: none;
 }
 
-/* ── Grid ── */
+/* Grid */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
   gap: var(--space-3);
 }
 
-/* ── Level card ── */
+/* Level card */
 .levelCard {
   aspect-ratio: 1;
   border-radius: var(--radius-md);
@@ -142,37 +129,38 @@
 }
 
 .levelCard.completed .cardImage {
-  filter: brightness(0.65);
+  filter: brightness(0.6);
+}
+
+/* Stars overlay — bottom of card */
+.starsOverlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  padding: 3px 0 4px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.6));
 }
 
 .cardNumber {
   position: absolute;
-  bottom: var(--space-2);
-  right: var(--space-2);
+  top: var(--space-1);
+  right: var(--space-1);
   background: rgba(0, 0, 0, 0.65);
   color: var(--color-white);
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 1px 5px;
   border-radius: 4px;
 }
 
-.completedBadge {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.2rem;
-  color: var(--color-gold);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-}
-
-/* ── Locked ── */
+/* Locked */
 .levelCard.locked {
   background: var(--color-teal-800);
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.55;
   box-shadow: none;
 }
 
@@ -182,5 +170,5 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
 }

@@ -1,0 +1,21 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.star {
+  line-height: 1;
+}
+
+.filled {
+  color: var(--color-gold);
+}
+
+.empty {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.sm .star { font-size: 0.75rem; }
+.md .star { font-size: 1.1rem; }
+.lg .star { font-size: 2rem; }
