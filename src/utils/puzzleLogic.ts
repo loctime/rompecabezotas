@@ -419,7 +419,7 @@ export function moveGroupToPosition(
   const displacedPieces: Array<{ id: number; oldPos: number; newPos: number }> = [];
   const total = pieces.length;
 
-  for (const [pieceId, newPos] of newGroupPositions.entries()) {
+  for (const [, newPos] of newGroupPositions.entries()) {
     if (occupiedPositions.has(newPos)) {
       // Find the piece currently at this position
       const displacedPiece = pieces.find((p) => p.currentPosition === newPos && !groupPieceIds.has(p.id));

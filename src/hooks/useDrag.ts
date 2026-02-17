@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PieceGroup } from '../types';
 
-/** Estado mínimo para montar/desmontar el overlay. NO incluye ghostX/Y ni hoverPosition. */
+interface GroupBoundingBox {
+  minRow: number;
+  maxRow: number;
+  minCol: number;
+  maxCol: number;
+}
+
 export interface DragState {
   isDragging: boolean;
   draggingPieceId: number | null;
   draggingGroupId: number | null;
-  ghostSize: number;
-  ghostStartX: number;
-  ghostStartY: number;
-  anchorOffsetX: number;
-  anchorOffsetY: number;
-  groupBoundingBox: { minRow: number; maxRow: number; minCol: number; maxCol: number } | null;
-  cellWidthPx: number;
-  cellHeightPx: number;
+  groupBoundingBox: GroupBoundingBox | null;
+  ghostBoardX: number;
+  ghostBoardY: number;
+  ghostWidth: number;
+  ghostHeight: number;
 }
 
 export interface UseDragReturn {
@@ -38,7 +41,7 @@ export function useDrag(
   groups: PieceGroup[],
   gridSize: number,
   onTap: (id: number) => void,
-  onSwap: (pieceId1: number, pieceId2: number) => void,
+  _onSwap: (pieceId1: number, pieceId2: number) => void,
   onDropGroup: (groupId: number, targetPosition: number) => void,
   onDragStart?: () => void
 ): UseDragReturn {
@@ -50,377 +53,220 @@ export function useDrag(
     isDragging: false,
     draggingPieceId: null,
     draggingGroupId: null,
-    ghostSize: 0,
-    ghostStartX: 0,
-    ghostStartY: 0,
-    anchorOffsetX: 0,
-    anchorOffsetY: 0,
     groupBoundingBox: null,
-    cellWidthPx: 0,
-    cellHeightPx: 0,
+    ghostBoardX: 0,
+    ghostBoardY: 0,
+    ghostWidth: 0,
+    ghostHeight: 0,
   });
 
   const internal = useRef({
     active: false,
+    movedEnough: false,
+    dragStarted: false,
+    pointerId: -1,
     pieceId: -1,
     groupId: -1,
-    startX: 0,
-    startY: 0,
-    movedEnough: false,
-    pointerId: -1,
-    dragStartNotified: false,
+    startClientX: 0,
+    startClientY: 0,
     boardRect: null as DOMRect | null,
-    anchorOffsetX: 0,
-    anchorOffsetY: 0,
-    groupBoundingBox: null as { minRow: number; maxRow: number; minCol: number; maxCol: number } | null,
-    ghostStartX: 0,
-    ghostStartY: 0,
+    cellWidth: 0,
+    cellHeight: 0,
+    bbox: null as GroupBoundingBox | null,
+    pointerOffsetX: 0,
+    pointerOffsetY: 0,
+    lastGhostX: 0,
+    lastGhostY: 0,
   });
 
-  const getPieceSizePx = useCallback((): number => {
-    const board = boardRef.current;
-    if (!board) return 0;
-    return board.getBoundingClientRect().width / gridSize;
-  }, [gridSize]);
+  const resetVisuals = useCallback(() => {
+    setDragState({
+      isDragging: false,
+      draggingPieceId: null,
+      draggingGroupId: null,
+      groupBoundingBox: null,
+      ghostBoardX: 0,
+      ghostBoardY: 0,
+      ghostWidth: 0,
+      ghostHeight: 0,
+    });
 
-  const getPositionFromPoint = useCallback(
-    (clientX: number, clientY: number): number | null => {
-      const board = boardRef.current;
-      if (!board) return null;
-
-      const rect = board.getBoundingClientRect();
-      const relX = clientX - rect.left;
-      const relY = clientY - rect.top;
-
-      if (relX < 0 || relY < 0 || relX > rect.width || relY > rect.height) return null;
-
-      // Use cell dimensions for exact grid calculation
-      const cellWidthPx = rect.width / gridSize;
-      const cellHeightPx = rect.height / gridSize;
-      
-      const col = Math.floor(relX / cellWidthPx);
-      const row = Math.floor(relY / cellHeightPx);
-
-      const clampedCol = Math.max(0, Math.min(gridSize - 1, col));
-      const clampedRow = Math.max(0, Math.min(gridSize - 1, row));
-
-      return clampedRow * gridSize + clampedCol;
-    },
-    [gridSize]
-  );
-
-  const updateDropTarget = useCallback(
-    (position: number | null) => {
-      const el = dropTargetRef.current;
-      const rect = internal.current.boardRect;
-      if (!el || !rect) return;
-
-      if (position === null) {
-        el.style.display = 'none';
-        return;
-      }
-
-      const targetPiece = pieces.find((p) => p.currentPosition === position);
-      if (!targetPiece) {
-        el.style.display = 'none';
-        return;
-      }
-
-      // Don't show drop target if target is part of the same group
-      if (targetPiece.groupId === internal.current.groupId) {
-        el.style.display = 'none';
-        return;
-      }
-
-      // Use cell dimensions for exact positioning (geometrically correct)
-      const cellWidthPx = rect.width / gridSize;
-      const cellHeightPx = rect.height / gridSize;
-      const row = Math.floor(position / gridSize);
-      const col = position % gridSize;
-      
-      // For groups, show the full bounding box size
-      const state = internal.current;
-      if (state.groupBoundingBox) {
-        const bboxCols = state.groupBoundingBox.maxCol - state.groupBoundingBox.minCol + 1;
-        const bboxRows = state.groupBoundingBox.maxRow - state.groupBoundingBox.minRow + 1;
-        
-        el.style.display = 'block';
-        el.style.left = `${rect.left + col * cellWidthPx}px`;
-        el.style.top = `${rect.top + row * cellHeightPx}px`;
-        el.style.width = `${bboxCols * cellWidthPx}px`;
-        el.style.height = `${bboxRows * cellHeightPx}px`;
-      } else {
-        el.style.display = 'block';
-        el.style.left = `${rect.left + col * cellWidthPx}px`;
-        el.style.top = `${rect.top + row * cellHeightPx}px`;
-        el.style.width = `${cellWidthPx}px`;
-        el.style.height = `${cellHeightPx}px`;
-      }
-    },
-    [gridSize, pieces]
-  );
-
-  const resetDragVisual = useCallback(() => {
-    setDragState((prev) =>
-      prev.isDragging || prev.draggingPieceId !== null
-        ? {
-            isDragging: false,
-            draggingPieceId: null,
-            draggingGroupId: null,
-            ghostSize: 0,
-            ghostStartX: 0,
-            ghostStartY: 0,
-            anchorOffsetX: 0,
-            anchorOffsetY: 0,
-            groupBoundingBox: null,
-            cellWidthPx: 0,
-            cellHeightPx: 0,
-          }
-        : prev
-    );
     if (dropTargetRef.current) {
       dropTargetRef.current.style.display = 'none';
     }
   }, []);
 
-  const onPiecePointerDown = useCallback((pieceId: number, e: React.PointerEvent<HTMLButtonElement>) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const getGroupBoundingBox = useCallback(
+    (groupId: number): GroupBoundingBox | null => {
+      const group = groups.find((g) => g.id === groupId);
+      if (!group) return null;
 
-    e.currentTarget.setPointerCapture(e.pointerId);
-
-    const piece = pieces.find((p) => p.id === pieceId);
-    const board = boardRef.current;
-    const boardRect = board ? board.getBoundingClientRect() : null;
-    
-    if (!boardRect) return;
-
-    const groupId = piece?.groupId ?? -1;
-    const group = groups.find((g) => g.id === groupId);
-    
-    let anchorOffsetX = 0;
-    let anchorOffsetY = 0;
-    let groupBoundingBox: { minRow: number; maxRow: number; minCol: number; maxCol: number } | null = null;
-
-    if (group && group.pieceIds.length > 1) {
-      // Calculate bounding box of the group
       const groupPieces = group.pieceIds
         .map((id) => pieces.find((p) => p.id === id))
         .filter((p): p is PieceLike => Boolean(p));
-      
-      if (groupPieces.length > 0) {
-        const positions = groupPieces.map((p) => p.currentPosition);
-        const rows = positions.map((pos) => Math.floor(pos / gridSize));
-        const cols = positions.map((pos) => pos % gridSize);
-        
-        const minRow = Math.min(...rows);
-        const maxRow = Math.max(...rows);
-        const minCol = Math.min(...cols);
-        const maxCol = Math.max(...cols);
-        
-        groupBoundingBox = { minRow, maxRow, minCol, maxCol };
-        
-        // Calculate offset of pointer relative to top-left corner of group bounding box
-        // Use cell dimensions for exact positioning (geometrically correct)
-        const cellWidthPx = boardRect.width / gridSize;
-        const cellHeightPx = boardRect.height / gridSize;
-        const groupTopLeftX = boardRect.left + minCol * cellWidthPx;
-        const groupTopLeftY = boardRect.top + minRow * cellHeightPx;
-        
-        anchorOffsetX = e.clientX - groupTopLeftX;
-        anchorOffsetY = e.clientY - groupTopLeftY;
-      }
-    } else {
-      // Single piece: offset is relative to piece center
-      // Use cell dimensions for exact positioning (geometrically correct)
-      const cellWidthPx = boardRect.width / gridSize;
-      const cellHeightPx = boardRect.height / gridSize;
-      const pieceRow = Math.floor(piece!.currentPosition / gridSize);
-      const pieceCol = piece!.currentPosition % gridSize;
-      const pieceCenterX = boardRect.left + pieceCol * cellWidthPx + cellWidthPx / 2;
-      const pieceCenterY = boardRect.top + pieceRow * cellHeightPx + cellHeightPx / 2;
-      
-      anchorOffsetX = e.clientX - pieceCenterX;
-      anchorOffsetY = e.clientY - pieceCenterY;
-    }
 
-    internal.current = {
-      active: true,
-      pieceId,
-      groupId,
-      startX: e.clientX,
-      startY: e.clientY,
-      movedEnough: false,
-      pointerId: e.pointerId,
-      dragStartNotified: false,
-      boardRect,
-      anchorOffsetX,
-      anchorOffsetY,
-      groupBoundingBox,
-      ghostStartX: 0,
-      ghostStartY: 0,
-    };
-  }, [pieces, groups, gridSize]);
+      if (groupPieces.length === 0) return null;
 
-  const startDragRef = useRef<() => void>(() => {});
-  startDragRef.current = () => {
-    const state = internal.current;
-    if (!state.active || state.pieceId < 0 || !state.boardRect) return;
+      const rows = groupPieces.map((p) => Math.floor(p.currentPosition / gridSize));
+      const cols = groupPieces.map((p) => p.currentPosition % gridSize);
 
-    // Calculate cell dimensions using cached boardRect (geometrically correct)
-    const cellWidthPx = state.boardRect.width / gridSize;
-    const cellHeightPx = state.boardRect.height / gridSize;
-    const pieceSize = cellWidthPx; // For backward compatibility, use width
-    
-    const group = groups.find((g) => g.id === state.groupId);
-    
-    if (group && state.groupBoundingBox) {
-      // Group: calculate initial position using anchor offset
-      // Initial ghost position = pointer position - anchor offset
-      const startX = state.startX - state.anchorOffsetX;
-      const startY = state.startY - state.anchorOffsetY;
-      
-      internal.current.ghostStartX = startX;
-      internal.current.ghostStartY = startY;
-      
-      setDragState({
-        isDragging: true,
-        draggingPieceId: state.pieceId,
-        draggingGroupId: state.groupId,
-        ghostSize: pieceSize,
-        ghostStartX: startX,
-        ghostStartY: startY,
-        anchorOffsetX: state.anchorOffsetX,
-        anchorOffsetY: state.anchorOffsetY,
-        groupBoundingBox: state.groupBoundingBox,
-        cellWidthPx,
-        cellHeightPx,
-      });
-    } else {
-      // Single piece: use anchor offset
-      const piece = pieces.find((p) => p.id === state.pieceId);
+      return {
+        minRow: Math.min(...rows),
+        maxRow: Math.max(...rows),
+        minCol: Math.min(...cols),
+        maxCol: Math.max(...cols),
+      };
+    },
+    [groups, pieces, gridSize]
+  );
+
+  const updateDropTarget = useCallback(
+    (anchorRow: number, anchorCol: number) => {
+      const state = internal.current;
+      const el = dropTargetRef.current;
+      if (!el || !state.bbox) return;
+
+      const bboxRows = state.bbox.maxRow - state.bbox.minRow + 1;
+      const bboxCols = state.bbox.maxCol - state.bbox.minCol + 1;
+      const maxRow = Math.max(0, gridSize - bboxRows);
+      const maxCol = Math.max(0, gridSize - bboxCols);
+
+      const clampedRow = Math.max(0, Math.min(maxRow, anchorRow));
+      const clampedCol = Math.max(0, Math.min(maxCol, anchorCol));
+
+      el.style.display = 'block';
+      el.style.left = `${clampedCol * state.cellWidth}px`;
+      el.style.top = `${clampedRow * state.cellHeight}px`;
+      el.style.width = `${bboxCols * state.cellWidth}px`;
+      el.style.height = `${bboxRows * state.cellHeight}px`;
+    },
+    [gridSize]
+  );
+
+  const onPiecePointerDown = useCallback(
+    (pieceId: number, e: React.PointerEvent<HTMLButtonElement>) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+      const board = boardRef.current;
+      if (!board) return;
+
+      const boardRect = board.getBoundingClientRect();
+      const cellWidth = boardRect.width / gridSize;
+      const cellHeight = boardRect.height / gridSize;
+
+      const piece = pieces.find((p) => p.id === pieceId);
       if (!piece) return;
-      
-      const startX = state.startX - state.anchorOffsetX;
-      const startY = state.startY - state.anchorOffsetY;
 
-      internal.current.ghostStartX = startX;
-      internal.current.ghostStartY = startY;
+      const groupId = piece.groupId;
+      const bbox = getGroupBoundingBox(groupId);
+      if (!bbox) return;
 
-      setDragState({
-        isDragging: true,
-        draggingPieceId: state.pieceId,
-        draggingGroupId: state.groupId,
-        ghostSize: pieceSize,
-        ghostStartX: startX,
-        ghostStartY: startY,
-        anchorOffsetX: state.anchorOffsetX,
-        anchorOffsetY: state.anchorOffsetY,
-        groupBoundingBox: null,
-        cellWidthPx,
-        cellHeightPx,
-      });
-    }
-  };
+      const groupLeft = bbox.minCol * cellWidth;
+      const groupTop = bbox.minRow * cellHeight;
+      const pointerBoardX = e.clientX - boardRect.left;
+      const pointerBoardY = e.clientY - boardRect.top;
+
+      internal.current = {
+        active: true,
+        movedEnough: false,
+        dragStarted: false,
+        pointerId: e.pointerId,
+        pieceId,
+        groupId,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        boardRect,
+        cellWidth,
+        cellHeight,
+        bbox,
+        pointerOffsetX: pointerBoardX - groupLeft,
+        pointerOffsetY: pointerBoardY - groupTop,
+        lastGhostX: groupLeft,
+        lastGhostY: groupTop,
+      };
+
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    [gridSize, pieces, getGroupBoundingBox]
+  );
 
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
       const state = internal.current;
-      if (!state.active || e.pointerId !== state.pointerId) return;
+      if (!state.active || state.pointerId !== e.pointerId || !state.boardRect || !state.bbox) return;
 
-      const dx = e.clientX - state.startX;
-      const dy = e.clientY - state.startY;
-      const dist = Math.hypot(dx, dy);
+      const dx = e.clientX - state.startClientX;
+      const dy = e.clientY - state.startClientY;
 
       if (!state.movedEnough) {
-        if (dist < DRAG_THRESHOLD_PX) return;
+        if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
         state.movedEnough = true;
-
-        if (!state.dragStartNotified) {
-          onDragStart?.();
-          state.dragStartNotified = true;
-        }
-        startDragRef.current();
       }
 
-      // ─── MOVIMIENTO VISUAL: solo ghost, DOM imperativo, cero setState ───
+      if (!state.dragStarted) {
+        state.dragStarted = true;
+        onDragStart?.();
+
+        const bboxCols = state.bbox.maxCol - state.bbox.minCol + 1;
+        const bboxRows = state.bbox.maxRow - state.bbox.minRow + 1;
+
+        setDragState({
+          isDragging: true,
+          draggingPieceId: state.pieceId,
+          draggingGroupId: state.groupId,
+          groupBoundingBox: state.bbox,
+          ghostBoardX: state.lastGhostX,
+          ghostBoardY: state.lastGhostY,
+          ghostWidth: bboxCols * state.cellWidth,
+          ghostHeight: bboxRows * state.cellHeight,
+        });
+      }
+
+      const pointerBoardX = e.clientX - state.boardRect.left;
+      const pointerBoardY = e.clientY - state.boardRect.top;
+      const ghostX = pointerBoardX - state.pointerOffsetX;
+      const ghostY = pointerBoardY - state.pointerOffsetY;
+
+      state.lastGhostX = ghostX;
+      state.lastGhostY = ghostY;
+
       const ghost = ghostRef.current;
-      if (ghost && state.boardRect && dragState.isDragging) {
-        // Calculate group position: pointer position - anchor offset
-        const groupX = e.clientX - state.anchorOffsetX;
-        const groupY = e.clientY - state.anchorOffsetY;
-        
-        // Update ghost position directly using ONLY left/top (no transform)
-        ghost.style.left = `${groupX}px`;
-        ghost.style.top = `${groupY}px`;
+      if (ghost) {
+        ghost.style.left = `${ghostX}px`;
+        ghost.style.top = `${ghostY}px`;
       }
 
-      // Hit-test para drop target: usar top-left del ghost para preview
-      let targetPos: number | null = null;
-      if (state.groupBoundingBox && state.boardRect && ghostRef.current) {
-        // Use ghost's top-left corner (geometrically correct)
-        const ghostRect = ghostRef.current.getBoundingClientRect();
-        targetPos = getPositionFromPoint(ghostRect.left, ghostRect.top);
-      } else {
-        targetPos = getPositionFromPoint(e.clientX, e.clientY);
-      }
-      updateDropTarget(targetPos);
+      const anchorCol = Math.floor(ghostX / state.cellWidth);
+      const anchorRow = Math.floor(ghostY / state.cellHeight);
+      updateDropTarget(anchorRow, anchorCol);
     };
 
     const handlePointerUp = (e: PointerEvent) => {
       const state = internal.current;
-      if (!state.active || e.pointerId !== state.pointerId) return;
+      if (!state.active || state.pointerId !== e.pointerId || !state.bbox) return;
 
       if (!state.movedEnough) {
         onTap(state.pieceId);
       } else {
-        // Free movement: drop group based on ghost's top-left corner (geometrically correct)
-        if (state.groupId !== -1 && state.boardRect && dragState.isDragging) {
-          let targetPos: number | null = null;
-          
-          if (state.groupBoundingBox && ghostRef.current && state.boardRect) {
-            // Get ghost's top-left corner (geometrically correct)
-            const ghostRect = ghostRef.current.getBoundingClientRect();
-            
-            // Use cell dimensions for exact snap
-            const cellWidthPx = state.boardRect.width / gridSize;
-            const cellHeightPx = state.boardRect.height / gridSize;
-            
-            // Convert ghost top-left to grid coordinates
-            const relX = ghostRect.left - state.boardRect.left;
-            const relY = ghostRect.top - state.boardRect.top;
-            
-            const targetCol = Math.floor(relX / cellWidthPx);
-            const targetRow = Math.floor(relY / cellHeightPx);
-            
-            // Clamp accounting for group size
-            const bboxCols = state.groupBoundingBox.maxCol - state.groupBoundingBox.minCol + 1;
-            const bboxRows = state.groupBoundingBox.maxRow - state.groupBoundingBox.minRow + 1;
-            const maxCol = Math.max(0, gridSize - bboxCols);
-            const maxRow = Math.max(0, gridSize - bboxRows);
-            
-            const clampedCol = Math.max(0, Math.min(maxCol, targetCol));
-            const clampedRow = Math.max(0, Math.min(maxRow, targetRow));
-            
-            targetPos = clampedRow * gridSize + clampedCol;
-          } else {
-            targetPos = getPositionFromPoint(e.clientX, e.clientY);
-          }
-          
-          if (targetPos !== null) {
-            onDropGroup(state.groupId, targetPos);
-          }
-        }
+        const bboxCols = state.bbox.maxCol - state.bbox.minCol + 1;
+        const bboxRows = state.bbox.maxRow - state.bbox.minRow + 1;
+        const maxCol = Math.max(0, gridSize - bboxCols);
+        const maxRow = Math.max(0, gridSize - bboxRows);
+
+        const targetCol = Math.max(0, Math.min(maxCol, Math.floor(state.lastGhostX / state.cellWidth)));
+        const targetRow = Math.max(0, Math.min(maxRow, Math.floor(state.lastGhostY / state.cellHeight)));
+        onDropGroup(state.groupId, targetRow * gridSize + targetCol);
       }
 
-      resetDragVisual();
       internal.current.active = false;
+      resetVisuals();
     };
 
     const handlePointerCancel = (e: PointerEvent) => {
       const state = internal.current;
-      if (!state.active || e.pointerId !== state.pointerId) return;
+      if (!state.active || state.pointerId !== e.pointerId) return;
       internal.current.active = false;
-      resetDragVisual();
+      resetVisuals();
     };
 
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
@@ -432,7 +278,7 @@ export function useDrag(
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerCancel);
     };
-  }, [pieces, groups, getPositionFromPoint, getPieceSizePx, onTap, onSwap, onDropGroup, onDragStart, resetDragVisual, updateDropTarget, dragState.isDragging]);
+  }, [gridSize, onDragStart, onDropGroup, onTap, resetVisuals, updateDropTarget]);
 
   const isDraggingPiece = useCallback(
     (pieceId: number) => {
