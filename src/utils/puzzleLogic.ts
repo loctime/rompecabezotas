@@ -77,6 +77,42 @@ export function areNeighborsInSolution(
   return arePositionsAdjacent(p1.correctPosition, p2.correctPosition, gridSize);
 }
 
+/**
+ * Checks if two adjacent pieces have the correct relative relationship.
+ * This verifies if the current adjacency matches their correct relative positions (row/col).
+ * 
+ * Example: If B is to the right of A in current positions, check if B should be 
+ * to the right of A according to their correct row/col values.
+ */
+export function hasCorrectRelativeRelationship(
+  p1: PuzzlePiece,
+  p2: PuzzlePiece,
+  gridSize: number
+): boolean {
+  // Get current positions
+  const p1Row = Math.floor(p1.currentPosition / gridSize);
+  const p1Col = p1.currentPosition % gridSize;
+  const p2Row = Math.floor(p2.currentPosition / gridSize);
+  const p2Col = p2.currentPosition % gridSize;
+
+  // Calculate relative position in current board
+  const deltaRow = p2Row - p1Row;
+  const deltaCol = p2Col - p1Col;
+
+  // Get correct positions (row/col from piece definition)
+  const p1CorrectRow = p1.row;
+  const p1CorrectCol = p1.col;
+  const p2CorrectRow = p2.row;
+  const p2CorrectCol = p2.col;
+
+  // Calculate relative position in correct solution
+  const correctDeltaRow = p2CorrectRow - p1CorrectRow;
+  const correctDeltaCol = p2CorrectCol - p1CorrectCol;
+
+  // They should have the same relative relationship
+  return deltaRow === correctDeltaRow && deltaCol === correctDeltaCol;
+}
+
 // ─── PIECE QUERIES ────────────────────────────────────────────────────────────
 
 export function isPieceCorrect(piece: PuzzlePiece): boolean {
@@ -207,10 +243,11 @@ function updateGroupIds(
 }
 
 /**
- * After any swap, checks all correct pieces and merges groups that are:
- * 1. Both in correct positions
- * 2. Currently adjacent in the grid
- * 3. Neighbors in the solved image
+ * After any swap, checks all pieces and merges groups that are:
+ * 1. Currently adjacent in the grid
+ * 2. Have the correct relative relationship (matching row/col deltas)
+ * 
+ * This works regardless of whether pieces are in their final correct positions.
  * Uses O(1) lookup maps to avoid nested find/filter in hot loops.
  */
 export function checkAndMergeAdjacentGroups(
@@ -229,8 +266,6 @@ export function checkAndMergeAdjacentGroups(
     const posMap = buildPositionMap(currentPieces);
 
     for (const piece of currentPieces) {
-      if (!isPieceCorrect(piece)) continue;
-
       // Check all 4 neighbors
       const neighbors = [
         piece.currentPosition - gridSize, // up
@@ -246,11 +281,13 @@ export function checkAndMergeAdjacentGroups(
         if (!arePositionsAdjacent(piece.currentPosition, nPos, gridSize)) continue;
 
         const neighbor = posMap.get(nPos);
-        if (!neighbor || !isPieceCorrect(neighbor)) continue;
+        if (!neighbor) continue;
+        
+        // Skip if already in same group
         if (piece.groupId === neighbor.groupId) continue;
 
-        // Are they meant to be neighbors in the solution?
-        if (!areNeighborsInSolution(piece, neighbor, gridSize)) continue;
+        // Check if they have the correct relative relationship
+        if (!hasCorrectRelativeRelationship(piece, neighbor, gridSize)) continue;
 
         currentGroups = mergeGroups(currentGroups, piece.groupId, neighbor.groupId);
         currentPieces = updateGroupIds(currentPieces, currentGroups);

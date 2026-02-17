@@ -32,8 +32,7 @@ const GroupBorder = memo(function GroupBorder({ group, pieceById, gridSize }: Gr
 
     const groupPieces = group.pieceIds
       .map((id) => pieceById.get(id))
-      .filter((piece): piece is PuzzlePieceType => Boolean(piece))
-      .filter((p) => p.currentPosition === p.correctPosition);
+      .filter((piece): piece is PuzzlePieceType => Boolean(piece));
 
     if (groupPieces.length < 2) return [] as Edge[];
 
@@ -47,15 +46,19 @@ const GroupBorder = memo(function GroupBorder({ group, pieceById, gridSize }: Gr
       const y = row * pieceSize;
       const s = pieceSize;
 
+      // Top edge: if at top of grid or neighbor above is not in same group
       if (row === 0 || !posSet.has(piece.currentPosition - gridSize)) {
         boardEdges.push({ x1: x, y1: y, x2: x + s, y2: y });
       }
+      // Bottom edge: if at bottom of grid or neighbor below is not in same group
       if (row === gridSize - 1 || !posSet.has(piece.currentPosition + gridSize)) {
         boardEdges.push({ x1: x, y1: y + s, x2: x + s, y2: y + s });
       }
+      // Left edge: if at left of grid or neighbor left is not in same group
       if (col === 0 || !posSet.has(piece.currentPosition - 1)) {
         boardEdges.push({ x1: x, y1: y, x2: x, y2: y + s });
       }
+      // Right edge: if at right of grid or neighbor right is not in same group
       if (col === gridSize - 1 || !posSet.has(piece.currentPosition + 1)) {
         boardEdges.push({ x1: x + s, y1: y, x2: x + s, y2: y + s });
       }
@@ -84,7 +87,8 @@ const DropTargetOverlay = memo(function DropTargetOverlay({
   isDragging: boolean;
 }) {
   if (!isDragging) return null;
-  return <div ref={dropTargetRef} className={styles.dropTargetOverlay} aria-hidden style={{ display: 'none' }} />;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return <div ref={dropTargetRef as any} className={styles.dropTargetOverlay} aria-hidden style={{ display: 'none' }} />;
 });
 
 export function GameBoard({

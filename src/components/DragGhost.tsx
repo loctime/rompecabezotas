@@ -39,13 +39,15 @@ export const DragGhost = memo(function DragGhost({ dragState, ghostRef, pieces, 
   const minCol = Math.min(...cols);
   const maxCol = Math.max(...cols);
 
-  // Calculate background position based on the top-left piece of the group
+  // Find the top-left piece of the group (by current position)
   const topLeftPiece = groupPieces.find((p) => {
     const row = Math.floor(p.currentPosition / gridSize);
     const col = p.currentPosition % gridSize;
     return row === minRow && col === minCol;
   }) || groupPieces[0];
 
+  // Use correct coordinates (row/col) for background position, not currentPosition
+  // This ensures the image shows the correct portion regardless of where the group is on the board
   const bgPosX = gridSize > 1 ? (topLeftPiece.col / (gridSize - 1)) * 100 : 0;
   const bgPosY = gridSize > 1 ? (topLeftPiece.row / (gridSize - 1)) * 100 : 0;
 
