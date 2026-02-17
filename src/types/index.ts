@@ -42,7 +42,7 @@ export type GameAction =
   | { type: 'INIT'; level: Level }
   | { type: 'SELECT_PIECE'; pieceId: number }
   | { type: 'DESELECT' }
-  | { type: 'SWAP_AND_MERGE'; pieceId1: number; pieceId2: number }
+  | { type: 'SWAP_AND_MERGE'; pieceId1: number; pieceId2: number; gridSize: number }
   | { type: 'COMPLETE' }
   | { type: 'RESET'; level: Level }
   | { type: 'TICK'; elapsed: number };

@@ -1,4 +1,4 @@
-import type { Level, LevelStats, ProgressMap } from '../types';
+import type { Level, ProgressMap } from '../types';
 
 const STORAGE_KEY = 'jigsolitaire_v2_progress';
 

@@ -37,7 +37,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, selectedPieceId: null };
 
     case 'SWAP_AND_MERGE': {
-      const { pieceId1, pieceId2 } = action;
+      const { pieceId1, pieceId2, gridSize } = action;
 
       // 1. Swap
       const { pieces: swapped, groups: swappedGroups } = swapPiecesOrGroups(
@@ -51,8 +51,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       const { pieces: final, groups: finalGroups } = checkAndMergeAdjacentGroups(
         swapped,
         swappedGroups,
-        // gridSize derived from piece count (always square)
-        Math.round(Math.sqrt(state.pieces.length))
+        gridSize
       );
 
       const complete = isPuzzleComplete(final);
@@ -122,10 +121,10 @@ export function useGameState(level: Level): UseGameStateReturn {
       } else if (state.selectedPieceId === pieceId) {
         dispatch({ type: 'DESELECT' });
       } else {
-        dispatch({ type: 'SWAP_AND_MERGE', pieceId1: state.selectedPieceId, pieceId2: pieceId });
+        dispatch({ type: 'SWAP_AND_MERGE', pieceId1: state.selectedPieceId, pieceId2: pieceId, gridSize: level.gridSize });
       }
     },
-    [state.isComplete, state.selectedPieceId]
+    [state.isComplete, state.selectedPieceId, level.gridSize]
   );
 
   const resetLevel = useCallback(() => {
